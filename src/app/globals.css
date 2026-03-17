@@ -1,0 +1,193 @@
+:root {
+  --bg: #f4f1ea;
+  --surface: #fffdf8;
+  --ink: #1c1a17;
+  --muted: #57524a;
+  --accent: #266c43;
+  --accent-soft: #dbeedd;
+  --line: #d8d0c4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top left, #fffaf1, var(--bg));
+  color: var(--ink);
+  font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 56px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.inline-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag {
+  background: var(--accent-soft);
+  color: #134129;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.85rem;
+}
+
+input,
+textarea,
+button,
+select {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: white;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #ece4d6;
+  color: #30291f;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.row > * {
+  flex: 1;
+  min-width: 180px;
+}
+
+.react-tags {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  padding: 6px;
+}
+
+.react-tags.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(38, 108, 67, 0.15);
+}
+
+.react-tags__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.react-tags__list {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.react-tags__list-item {
+  display: inline;
+  list-style: none;
+}
+
+.react-tags__tag {
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: #134129;
+  margin: 0 6px 6px 0;
+  padding: 4px 10px;
+  font-size: 0.86rem;
+}
+
+.react-tags__tag::after {
+  content: " ×";
+}
+
+.react-tags__tag:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.react-tags__combobox {
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 6px;
+}
+
+.react-tags__combobox-input {
+  border: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 4px 6px;
+  width: auto;
+  min-width: 130px;
+}
+
+.react-tags__listbox {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 220px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.react-tags__listbox-option {
+  padding: 8px 10px;
+}
+
+.react-tags__listbox-option:hover,
+.react-tags__listbox-option.is-active {
+  background: #f3efe6;
+}

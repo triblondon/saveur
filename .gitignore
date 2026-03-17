@@ -1,0 +1,8 @@
+.next
+node_modules
+npm-debug.log*
+.DS_Store
+.env
+.env.*
+data/store.json
+data/snapshots/*.html
