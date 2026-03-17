@@ -12,7 +12,7 @@ test("core scaffold files exist", () => {
 test("LLM importer uses schema and unit enums", () => {
   const source = readFileSync("src/lib/import/llm-import.ts", "utf8");
   assert.match(source, /json_schema/);
-  assert.match(source, /getOpenApiDereferencedSchema\(\"ImportDraft\"\)/);
+  assert.match(source, /getOpenApiDereferencedSchema\(\"RecipeFromLlmImport\"\)/);
   assert.match(source, /web_search_preview/);
 });
 

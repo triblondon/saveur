@@ -49,7 +49,36 @@ async function readStore(): Promise<StoreData> {
   return {
     recipes: (parsed.recipes ?? []).map((recipe) => ({
       ...recipe,
-      importPrompt: recipe.importPrompt ?? null
+      sourceType: recipe.sourceType ?? "MANUAL",
+      sourceRef: recipe.sourceRef ?? "",
+      importPrompt: recipe.importPrompt ?? null,
+      importRunId: recipe.importRunId ?? null,
+      ingredients: (recipe.ingredients ?? []).map((ingredient) => ({
+        ...ingredient,
+        unit: ingredient.unit ?? "UNKNOWN"
+      })),
+      prepTasks: (recipe.prepTasks ?? []).map((task) => ({
+        preparationName:
+          "preparationName" in task && typeof task.preparationName === "string"
+            ? task.preparationName
+            : "title" in task && typeof task.title === "string"
+              ? task.title
+              : "",
+        sourceIngredients:
+          "sourceIngredients" in task && Array.isArray(task.sourceIngredients)
+            ? task.sourceIngredients
+            : [],
+        detail: task.detail ?? null
+      })),
+      cookSteps: (recipe.cookSteps ?? []).map((step) => ({
+        instruction: step.instruction,
+        detail: step.detail ?? null,
+        sourceIngredients:
+          "sourceIngredients" in step && Array.isArray(step.sourceIngredients)
+            ? step.sourceIngredients
+            : [],
+        timerSeconds: step.timerSeconds ?? null
+      }))
     })),
     sourceSnapshots: parsed.sourceSnapshots ?? [],
     importRuns: parsed.importRuns ?? [],
@@ -77,9 +106,7 @@ function recipeSearchBlob(recipe: Recipe): string {
 }
 
 function mapIngredients(input: IngredientData[]): Ingredient[] {
-  return input.map((item, index) => ({
-    id: randomUUID(),
-    position: index,
+  return input.map((item) => ({
     name: item.name,
     quantityText: item.quantityText,
     quantityValue: item.quantityValue,
@@ -93,24 +120,19 @@ function mapIngredients(input: IngredientData[]): Ingredient[] {
 }
 
 function mapPrepTasks(input: PrepTaskData[]): PrepTask[] {
-  return input.map((item, index) => ({
-    id: randomUUID(),
-    position: index,
-    title: item.title,
+  return input.map((item) => ({
+    preparationName: item.preparationName,
+    sourceIngredients: item.sourceIngredients,
     detail: item.detail
   }));
 }
 
-function mapCookSteps(input: CookStepDraftData[], prepTasks: PrepTask[]): CookStep[] {
-  return input.map((item, index) => ({
-    id: randomUUID(),
-    position: index,
+function mapCookSteps(input: CookStepDraftData[]): CookStep[] {
+  return input.map((item) => ({
     instruction: item.instruction,
     detail: item.detail,
-    timerSeconds: item.timerSeconds,
-    prepTaskRefs: item.prepTaskRefs
-      .map((prepTaskIndex) => prepTasks[prepTaskIndex]?.id)
-      .filter((value): value is string => Boolean(value))
+    sourceIngredients: item.sourceIngredients,
+    timerSeconds: item.timerSeconds
   }));
 }
 
@@ -156,43 +178,29 @@ export async function createManualRecipe(input: ManualRecipeInput): Promise<Reci
   const data = await readStore();
   const timestamp = nowIso();
 
-  const ingredients: Ingredient[] = input.ingredients.map((item, index) => ({
-    id: randomUUID(),
-    position: index,
+  const ingredients: Ingredient[] = input.ingredients.map((item) => ({
     name: item.name,
     quantityText: item.quantityText ?? null,
     quantityValue: item.quantityValue ?? null,
     quantityMin: item.quantityMin ?? null,
     quantityMax: item.quantityMax ?? null,
-    unit: item.unit ?? null,
+    unit: item.unit ?? "UNKNOWN",
     isWholeItem: item.isWholeItem ?? false,
     optional: item.optional ?? false,
     isPantryItem: item.isPantryItem ?? false
   }));
 
-  const prepTaskIdByLocalId = new Map<string, string>();
-  const prepTasks: PrepTask[] = input.prepTasks.map((item, index) => {
-    const id = randomUUID();
-    const localId = item.localId?.trim();
-    if (localId) {
-      prepTaskIdByLocalId.set(localId, id);
-    }
+  const prepTasks: PrepTask[] = input.prepTasks.map((item) => ({
+    preparationName: item.preparationName,
+    sourceIngredients: item.sourceIngredients,
+    detail: item.detail ?? null
+  }));
 
-    return {
-      id,
-      position: index,
-      title: item.title,
-      detail: item.detail ?? null
-    };
-  });
-
-  const cookSteps: CookStep[] = input.cookSteps.map((item, index) => ({
-    id: randomUUID(),
-    position: index,
+  const cookSteps: CookStep[] = input.cookSteps.map((item) => ({
     instruction: item.instruction,
     detail: item.detail ?? null,
-    timerSeconds: item.timerSeconds ?? null,
-    prepTaskRefs: (item.prepTaskRefs ?? []).map((ref) => prepTaskIdByLocalId.get(ref) ?? ref)
+    sourceIngredients: item.sourceIngredients,
+    timerSeconds: item.timerSeconds ?? null
   }));
 
   const recipe: Recipe = {
@@ -341,12 +349,10 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
     importRunId: importRun.id,
     ingredients: mapIngredients(input.draft.ingredients),
     prepTasks: mapPrepTasks(input.draft.prepTasks),
-    cookSteps: [],
+    cookSteps: mapCookSteps(input.draft.cookSteps),
     createdAt: timestamp,
     updatedAt: timestamp
   };
-
-  recipe.cookSteps = mapCookSteps(input.draft.cookSteps, recipe.prepTasks);
 
   data.importRuns.push(importRun);
   data.recipes.push(recipe);
@@ -408,7 +414,7 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
 
   const ingredients = mapIngredients(input.draft.ingredients);
   const prepTasks = mapPrepTasks(input.draft.prepTasks);
-  const cookSteps = mapCookSteps(input.draft.cookSteps, prepTasks);
+  const cookSteps = mapCookSteps(input.draft.cookSteps);
 
   const next: Recipe = {
     ...existing,

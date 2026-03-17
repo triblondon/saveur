@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import ReactMarkdown from "react-markdown";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { Recipe } from "@/lib/types";
 import { scaleValue } from "@/lib/scaling";
+import styles from "@/components/styles/recipe-view.module.css";
 
 function formatSeconds(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -77,9 +80,6 @@ export function RecipeView({ recipe }: RecipeViewProps) {
   const [reimportError, setReimportError] = useState<string | null>(null);
   const [showReimportPrompt, setShowReimportPrompt] = useState(false);
   const [reimportPromptDraft, setReimportPromptDraft] = useState(recipe.importPrompt ?? "");
-  const [wakeLockState, setWakeLockState] = useState<"unsupported" | "enabled" | "disabled">(
-    "disabled"
-  );
   const cookStepRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
   useEffect(() => {
@@ -109,38 +109,6 @@ export function RecipeView({ recipe }: RecipeViewProps) {
       window.removeEventListener("resize", requestTick);
       if (frameId !== null) {
         window.cancelAnimationFrame(frameId);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    let released = false;
-    let lock: WakeLockSentinel | null = null;
-
-    async function enableWakeLock() {
-      if (!("wakeLock" in navigator) || !navigator.wakeLock?.request) {
-        setWakeLockState("unsupported");
-        return;
-      }
-
-      try {
-        lock = await navigator.wakeLock.request("screen");
-        if (!released) {
-          setWakeLockState("enabled");
-        }
-      } catch {
-        if (!released) {
-          setWakeLockState("disabled");
-        }
-      }
-    }
-
-    void enableWakeLock();
-
-    return () => {
-      released = true;
-      if (lock && !lock.released) {
-        void lock.release();
       }
     };
   }, []);
@@ -230,18 +198,68 @@ export function RecipeView({ recipe }: RecipeViewProps) {
     [ingredientsWithQuantity]
   );
 
+  const servingsOptions = useMemo(() => {
+    const values = new Set<number>();
+    for (let value = 1; value <= 10; value += 1) {
+      values.add(value);
+    }
+    values.add(servings);
+    if (recipe.servingCount && recipe.servingCount > 0) {
+      values.add(recipe.servingCount);
+    }
+
+    return Array.from(values).sort((left, right) => left - right);
+  }, [recipe.servingCount, servings]);
+
+  const sourceLabel = useMemo(() => {
+    if (recipe.sourceType !== "URL") {
+      return recipe.sourceType;
+    }
+
+    const raw = recipe.sourceRef?.trim();
+    if (!raw) {
+      return "URL";
+    }
+
+    try {
+      const url = new URL(raw);
+      return url.hostname.replace(/^www\./i, "");
+    } catch {
+      try {
+        const url = new URL(`https://${raw}`);
+        return url.hostname.replace(/^www\./i, "");
+      } catch {
+        return raw;
+      }
+    }
+  }, [recipe.sourceRef, recipe.sourceType]);
+
+  const createdLabel = useMemo(() => {
+    const parsed = new Date(recipe.createdAt);
+    if (Number.isNaN(parsed.getTime())) {
+      return recipe.createdAt;
+    }
+
+    return new Intl.DateTimeFormat(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    }).format(parsed);
+  }, [recipe.createdAt]);
+
   const timerInfoByStep = useMemo(() => {
     const infoByStep: Record<string, StepTimerInfo> = {};
 
-    for (const step of recipe.cookSteps) {
+    for (const [index, step] of recipe.cookSteps.entries()) {
+      const stepKey = String(index);
       if (!step.timerSeconds) {
         continue;
       }
 
       const durationSeconds = step.timerSeconds;
-      const current = timerStates[step.id];
+      const current = timerStates[stepKey];
       if (!current) {
-        infoByStep[step.id] = {
+        infoByStep[stepKey] = {
           status: "idle",
           remainingSeconds: durationSeconds,
           durationSeconds
@@ -250,7 +268,7 @@ export function RecipeView({ recipe }: RecipeViewProps) {
       }
 
       if (current.pausedRemaining !== null) {
-        infoByStep[step.id] = {
+        infoByStep[stepKey] = {
           status: "paused",
           remainingSeconds: Math.max(0, current.pausedRemaining),
           durationSeconds
@@ -260,7 +278,7 @@ export function RecipeView({ recipe }: RecipeViewProps) {
 
       if (current.endAt !== null) {
         const remaining = Math.max(0, Math.floor((current.endAt - now) / 1000));
-        infoByStep[step.id] = {
+        infoByStep[stepKey] = {
           status: remaining === 0 ? "done" : "running",
           remainingSeconds: remaining,
           durationSeconds
@@ -268,7 +286,7 @@ export function RecipeView({ recipe }: RecipeViewProps) {
         continue;
       }
 
-      infoByStep[step.id] = {
+      infoByStep[stepKey] = {
         status: "idle",
         remainingSeconds: durationSeconds,
         durationSeconds
@@ -291,13 +309,14 @@ export function RecipeView({ recipe }: RecipeViewProps) {
     const bottom: StickyTimer[] = [];
     const viewportHeight = window.innerHeight;
 
-    for (const step of recipe.cookSteps) {
-      const timerInfo = timerInfoByStep[step.id];
+    for (const [index, step] of recipe.cookSteps.entries()) {
+      const stepKey = String(index);
+      const timerInfo = timerInfoByStep[stepKey];
       if (!timerInfo || timerInfo.status !== "running") {
         continue;
       }
 
-      const element = cookStepRefs.current[step.id];
+      const element = cookStepRefs.current[stepKey];
       if (!element) {
         continue;
       }
@@ -305,14 +324,14 @@ export function RecipeView({ recipe }: RecipeViewProps) {
       const rect = element.getBoundingClientRect();
       if (rect.bottom < 0) {
         top.push({
-          stepId: step.id,
+          stepId: stepKey,
           instruction: step.instruction,
           remaining: timerInfo.remainingSeconds,
           rank: rect.bottom
         });
       } else if (rect.top > viewportHeight) {
         bottom.push({
-          stepId: step.id,
+          stepId: stepKey,
           instruction: step.instruction,
           remaining: timerInfo.remainingSeconds,
           rank: rect.top
@@ -368,112 +387,58 @@ export function RecipeView({ recipe }: RecipeViewProps) {
   }
 
   return (
-    <section>
-      <article className="card">
-        {recipe.heroPhotoUrl ? (
-          <img
-            src={recipe.heroPhotoUrl}
-            alt={recipe.title}
-            style={{
-              width: "100%",
-              maxHeight: 340,
-              objectFit: "cover",
-              borderRadius: 12,
-              marginBottom: 12
-            }}
-          />
-        ) : null}
-        <h2 style={{ marginTop: 0 }}>{recipe.title}</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Wake lock: {wakeLockState}
-        </p>
-        <p style={{ marginTop: 0 }}>
-          <Link href={`/recipes/${recipe.id}/edit`}>Edit recipe</Link>
-        </p>
-        {recipe.sourceType === "URL" ? (
-          <div style={{ marginTop: 0, display: "grid", gap: 8 }}>
-            {!showReimportPrompt ? (
-              <p style={{ marginTop: 0, marginBottom: 0 }}>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => setShowReimportPrompt(true)}
-                  disabled={reimporting}
-                >
-                  {reimporting ? "Reimporting..." : "Reimport with prompt"}
-                </button>
-              </p>
-            ) : (
-              <div className="card" style={{ marginBottom: 0, display: "grid", gap: 8 }}>
-                <label htmlFor="reimportPrompt">Reimport prompt (optional)</label>
-                <textarea
-                  id="reimportPrompt"
-                  rows={4}
-                  value={reimportPromptDraft}
-                  onChange={(event) => setReimportPromptDraft(event.target.value)}
-                />
-                <div className="row">
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => setShowReimportPrompt(false)}
-                    disabled={reimporting}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onReimportWithPrompt(reimportPromptDraft)}
-                    disabled={reimporting}
-                  >
-                    {reimporting ? "Reimporting..." : "Run reimport"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
-        {reimportError ? <p style={{ marginTop: 0, color: "#a22525" }}>{reimportError}</p> : null}
-
-        <div className="row">
-          <label>
-            Servings
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={servings}
-              onChange={(event) => setServings(Math.max(1, Number(event.target.value) || 1))}
+    <section className={styles.section}>
+      <article className={`card ${styles.headerCard}`}>
+        <div className={styles.headerTop}>
+          {recipe.heroPhotoUrl ? (
+            <Image
+              src={recipe.heroPhotoUrl}
+              alt={recipe.title}
+              className={styles.heroImage}
+              width={1200}
+              height={700}
             />
-          </label>
-          <div>
-            <p className="muted" style={{ marginBottom: 4 }}>
-              Total time
-            </p>
-            <strong>
-              {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} minutes` : "Not set"}
-            </strong>
-          </div>
-          <div>
-            <p className="muted" style={{ marginBottom: 4 }}>
-              Source
-            </p>
-            <strong>{recipe.sourceType}</strong>
+          ) : null}
+          <div className={styles.headerMeta}>
+            <h2 className={styles.title}>{recipe.title}</h2>
+            {recipe.description ? <p className={styles.description}>{recipe.description}</p> : null}
+            <div className={`row ${styles.metaRow}`}>
+              <label>
+                Servings
+                <select value={String(servings)} onChange={(event) => setServings(Number(event.target.value))}>
+                  {servingsOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div>
+                <p className={`muted ${styles.metricLabel}`}>Total time</p>
+                <strong>{recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} minutes` : "Not set"}</strong>
+              </div>
+              <div>
+                <p className={`muted ${styles.metricLabel}`}>Source</p>
+                <strong className={styles.sourceValue}>{sourceLabel}</strong>
+              </div>
+              <div>
+                <p className={`muted ${styles.metricLabel}`}>{recipe.sourceType === "URL" ? "Imported" : "Created"}</p>
+                <strong>{createdLabel}</strong>
+              </div>
+            </div>
           </div>
         </div>
       </article>
 
       <article className="card">
-        <h3 style={{ marginTop: 0 }}>Ingredients</h3>
+        <h3 className={styles.ingredientsTitle}>Ingredients</h3>
         {mainIngredients.length > 0 ? (
-          <table style={{ minWidth: "50%",borderCollapse: "collapse" }}>
+          <table className={styles.ingredientsTable}>
             <tbody>
               {mainIngredients.map(({ ingredient, quantity }) => (
-                <tr key={ingredient.id}>
-                  <td style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}>{ingredient.name}</td>
-                  <td style={{ padding: "6px 0", textAlign: "right", borderTop: "1px solid var(--line)" }}>
-                    {quantity}
-                  </td>
+                <tr key={`${ingredient.name}-${quantity}`}>
+                  <td className={styles.ingredientNameCell}>{ingredient.name}</td>
+                  <td className={styles.ingredientQtyCell}>{quantity}</td>
                 </tr>
               ))}
             </tbody>
@@ -481,7 +446,7 @@ export function RecipeView({ recipe }: RecipeViewProps) {
         ) : null}
         {mainIngredients.length === 0 ? <p className="muted">All ingredients are pantry items.</p> : null}
         {pantryIngredients.length > 0 ? (
-          <p className="muted" style={{ marginBottom: 0 }}>
+          <p className={`muted ${styles.pantryLine}`}>
             Also: {pantryIngredients.map(({ ingredient }) => ingredient.name).join(", ")}
           </p>
         ) : null}
@@ -489,12 +454,16 @@ export function RecipeView({ recipe }: RecipeViewProps) {
 
       {recipe.prepTasks.length > 0 ? (
         <article className="card">
-          <h3 style={{ marginTop: 0 }}>Prep tasks</h3>
-          <ol style={{ margin: 0, paddingLeft: 20 }}>
-            {recipe.prepTasks.map((task) => (
-              <li key={task.id} style={{ marginBottom: 8 }}>
-                <strong>{task.title}</strong>
-                {task.detail ? <div className="muted">{task.detail}</div> : null}
+          <h3 className={styles.prepTitle}>Prep tasks</h3>
+          <ol className={styles.prepList}>
+            {recipe.prepTasks.map((task, index) => (
+              <li key={`${index}-${task.preparationName}`} className={styles.prepItem}>
+                <strong>{task.preparationName}</strong>
+                {task.detail ? (
+                  <div className={styles.prepDetail}>
+                    <ReactMarkdown>{task.detail}</ReactMarkdown>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ol>
@@ -502,12 +471,13 @@ export function RecipeView({ recipe }: RecipeViewProps) {
       ) : null}
 
       <article className="card">
-        <h3 style={{ marginTop: 0 }}>Cook steps</h3>
-        <ol style={{ margin: 0, paddingLeft: 20 }}>
-          {recipe.cookSteps.map((step) => {
-            const timerInfo = step.timerSeconds ? timerInfoByStep[step.id] : null;
+        <h3 className={styles.cookTitle}>Cook steps</h3>
+        <ol className={styles.cookList}>
+          {recipe.cookSteps.map((step, index) => {
+            const stepKey = String(index);
+            const timerInfo = step.timerSeconds ? timerInfoByStep[stepKey] : null;
             const timerStatus: TimerStatus = timerInfo?.status ?? "idle";
-            const isHovered = hoveredTimerStepId === step.id;
+            const isHovered = hoveredTimerStepId === stepKey;
             const timerButtonLabel = (() => {
               if (!timerInfo) {
                 return "";
@@ -530,110 +500,50 @@ export function RecipeView({ recipe }: RecipeViewProps) {
 
             return (
               <li
-                key={step.id}
+                key={`${index}-${step.instruction}`}
                 ref={(element) => {
-                  cookStepRefs.current[step.id] = element;
+                  cookStepRefs.current[stepKey] = element;
                 }}
-                style={{ marginBottom: 14 }}
+                className={styles.cookItem}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    marginBottom: 6
-                  }}
-                >
-                  <strong>{step.instruction}</strong>
+                <div className={styles.cookHeader}>
+                  <strong className={styles.stepTitle}>{step.instruction}</strong>
                   {step.timerSeconds ? (
                     <div
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        background: "#ece4d6",
-                        color: "#30291f",
-                        borderRadius: 10,
-                        border: "1px solid var(--line)",
-                        overflow: "hidden",
-                        transition: "transform 120ms ease, box-shadow 120ms ease",
-                        transform: timerStatus === "idle" && isHovered ? "translateY(-1px)" : "none",
-                        boxShadow:
-                          timerStatus === "idle" && isHovered
-                            ? "0 2px 8px rgba(0, 0, 0, 0.16)"
-                            : "none"
-                      }}
-                      onMouseEnter={() => setHoveredTimerStepId(step.id)}
-                      onMouseLeave={() => setHoveredTimerStepId((previous) => (previous === step.id ? null : previous))}
+                      className={`${styles.timerShell} ${
+                        timerStatus === "idle" && isHovered ? styles.timerShellIdleHover : ""
+                      }`}
+                      onMouseEnter={() => setHoveredTimerStepId(stepKey)}
+                      onMouseLeave={() =>
+                        setHoveredTimerStepId((previous) => (previous === stepKey ? null : previous))
+                      }
                     >
-                      {timerStatus === "running" ? (
-                        <div
-                          style={{
-                            display: "inline-flex",
-                            width: isHovered ? 58 : 0,
-                            opacity: isHovered ? 1 : 0,
-                            overflow: "hidden",
-                            transition: "width 140ms ease, opacity 120ms ease",
-                            pointerEvents: isHovered ? "auto" : "none"
-                          }}
+                      <div
+                        className={`${styles.timerControls} ${
+                          timerStatus === "running" && isHovered ? styles.timerControlsVisible : ""
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Pause timer for ${step.instruction}`}
+                          onClick={() => pauseTimer(stepKey)}
+                          className={styles.timerControlButton}
                         >
-                          <button
-                            type="button"
-                            aria-label={`Pause timer for ${step.instruction}`}
-                            onClick={() => pauseTimer(step.id)}
-                            style={{
-                              width: 29,
-                              height: 29,
-                              border: 0,
-                              borderRight: "1px solid var(--line)",
-                              background: "transparent",
-                              color: "inherit",
-                              padding: 0,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer"
-                            }}
-                          >
-                            <PauseIcon />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label={`Cancel timer for ${step.instruction}`}
-                            onClick={() => cancelTimer(step.id)}
-                            style={{
-                              width: 29,
-                              height: 29,
-                              border: 0,
-                              borderRight: "1px solid var(--line)",
-                              background: "transparent",
-                              color: "inherit",
-                              padding: 0,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer"
-                            }}
-                          >
-                            <CancelIcon />
-                          </button>
-                        </div>
-                      ) : null}
+                          <PauseIcon />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Cancel timer for ${step.instruction}`}
+                          onClick={() => cancelTimer(stepKey)}
+                          className={styles.timerControlButton}
+                        >
+                          <CancelIcon />
+                        </button>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => startTimer(step.id, step.timerSeconds!)}
-                        style={{
-                          border: 0,
-                          background: "transparent",
-                          color: "inherit",
-                          padding: "4px 8px",
-                          fontSize: "0.8rem",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                          width: "auto",
-                          cursor: "pointer"
-                        }}
+                        onClick={() => startTimer(stepKey, step.timerSeconds!)}
+                        className={styles.timerMainButton}
                       >
                         <TimerIcon />
                         {timerButtonLabel}
@@ -641,43 +551,72 @@ export function RecipeView({ recipe }: RecipeViewProps) {
                     </div>
                   ) : null}
                 </div>
-                {step.detail ? <div className="muted">{step.detail}</div> : null}
+                {step.detail ? (
+                  <div className={styles.stepDetail}>
+                    <ReactMarkdown>{step.detail}</ReactMarkdown>
+                  </div>
+                ) : null}
               </li>
             );
           })}
         </ol>
       </article>
 
+      <article className={`card ${styles.actionsFooter}`}>
+        <div className={`row ${styles.actionsRow}`}>
+          <Link href={`/recipes/${recipe.id}/edit`} className={`secondary ${styles.actionLink}`}>
+            Edit recipe
+          </Link>
+          {recipe.sourceType === "URL" && !showReimportPrompt ? (
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setShowReimportPrompt(true)}
+              disabled={reimporting}
+            >
+              {reimporting ? "Reimporting..." : "Reimport with prompt"}
+            </button>
+          ) : null}
+        </div>
+        {recipe.sourceType === "URL" && showReimportPrompt ? (
+          <div className={`card ${styles.reimportPromptCard}`}>
+            <label htmlFor="reimportPrompt">Reimport prompt (optional)</label>
+            <textarea
+              id="reimportPrompt"
+              rows={4}
+              value={reimportPromptDraft}
+              onChange={(event) => setReimportPromptDraft(event.target.value)}
+            />
+            <div className="row">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setShowReimportPrompt(false)}
+                disabled={reimporting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void onReimportWithPrompt(reimportPromptDraft)}
+                disabled={reimporting}
+              >
+                {reimporting ? "Reimporting..." : "Run reimport"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {reimportError ? <p className={styles.error}>{reimportError}</p> : null}
+      </article>
+
       {stickyTimers.top.length > 0 ? (
-        <div
-          style={{
-            position: "fixed",
-            top: 10,
-            left: 10,
-            right: 10,
-            display: "grid",
-            gap: 8,
-            zIndex: 1200,
-            pointerEvents: "none"
-          }}
-        >
+        <div className={styles.stickyContainerTop}>
           {stickyTimers.top.map((timer) => (
             <button
               key={`top-${timer.stepId}`}
               type="button"
-              className="secondary"
+              className={`secondary ${styles.stickyTimerButton}`}
               onClick={() => scrollToCookStep(timer.stepId)}
-              style={{
-                pointerEvents: "auto",
-                justifySelf: "end",
-                width: "auto",
-                padding: "6px 10px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "0.82rem",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
-              }}
             >
               <TimerIcon />
               <strong>{timer.instruction}</strong>
@@ -688,35 +627,13 @@ export function RecipeView({ recipe }: RecipeViewProps) {
       ) : null}
 
       {stickyTimers.bottom.length > 0 ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 10,
-            left: 10,
-            right: 10,
-            display: "grid",
-            gap: 8,
-            zIndex: 1200,
-            pointerEvents: "none"
-          }}
-        >
+        <div className={styles.stickyContainerBottom}>
           {stickyTimers.bottom.map((timer) => (
             <button
               key={`bottom-${timer.stepId}`}
               type="button"
-              className="secondary"
+              className={`secondary ${styles.stickyTimerButton}`}
               onClick={() => scrollToCookStep(timer.stepId)}
-              style={{
-                pointerEvents: "auto",
-                justifySelf: "end",
-                width: "auto",
-                padding: "6px 10px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "0.82rem",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)"
-              }}
             >
               <TimerIcon />
               <strong>{timer.instruction}</strong>

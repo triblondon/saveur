@@ -1,43 +1,43 @@
-import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { captureImportFeedback, deleteRecipe, getRecipeById, updateRecipe } from "@/lib/store";
-import type { CookStep, Ingredient, PrepTask, Recipe } from "@/lib/types";
+import type { Recipe, RecipeUpdateInput } from "@/lib/types";
 import { formatValidationIssues, isValidationError, parseRecipeUpdateInput } from "@/lib/validation";
 
-function toIngredientUpdates(items: Ingredient[]): Ingredient[] {
-  return items.map((item, index) => ({
-    id: item.id || randomUUID(),
-    position: index,
-    name: item.name,
-    quantityText: item.quantityText,
-    quantityValue: item.quantityValue,
-    quantityMin: item.quantityMin,
-    quantityMax: item.quantityMax,
-    unit: item.unit,
-    isWholeItem: item.isWholeItem,
-    optional: item.optional,
-    isPantryItem: item.isPantryItem
-  }));
-}
-
-function toPrepTaskUpdates(items: PrepTask[]): PrepTask[] {
-  return items.map((item, index) => ({
-    id: item.id || randomUUID(),
-    position: index,
-    title: item.title,
-    detail: item.detail
-  }));
-}
-
-function toCookStepUpdates(items: CookStep[]): CookStep[] {
-  return items.map((item, index) => ({
-    id: item.id || randomUUID(),
-    position: index,
-    instruction: item.instruction,
-    detail: item.detail,
-    timerSeconds: item.timerSeconds,
-    prepTaskRefs: item.prepTaskRefs
-  }));
+function normalizeFullRecipe(payload: RecipeUpdateInput): Partial<Omit<Recipe, "id" | "createdAt">> {
+  return {
+    title: payload.title.trim(),
+    description: payload.description,
+    heroPhotoUrl: payload.heroPhotoUrl,
+    servingCount: payload.servingCount,
+    timeRequiredMinutes: payload.timeRequiredMinutes,
+    tags: payload.tags.map((tag) => tag.trim()).filter(Boolean),
+    sourceType: payload.sourceType,
+    sourceRef: payload.sourceRef.trim(),
+    importPrompt: payload.importPrompt,
+    importRunId: payload.importRunId,
+    ingredients: payload.ingredients.map((item) => ({
+      name: item.name.trim(),
+      quantityText: item.quantityText,
+      quantityValue: item.quantityValue,
+      quantityMin: item.quantityMin,
+      quantityMax: item.quantityMax,
+      unit: item.unit ?? "UNKNOWN",
+      isWholeItem: item.isWholeItem,
+      optional: item.optional,
+      isPantryItem: item.isPantryItem
+    })),
+    prepTasks: payload.prepTasks.map((item) => ({
+      preparationName: item.preparationName.trim(),
+      sourceIngredients: item.sourceIngredients.map((name) => name.trim()).filter(Boolean),
+      detail: item.detail
+    })),
+    cookSteps: payload.cookSteps.map((item) => ({
+      instruction: item.instruction.trim(),
+      detail: item.detail,
+      sourceIngredients: item.sourceIngredients?.map((name) => name.trim()).filter(Boolean),
+      timerSeconds: item.timerSeconds
+    }))
+  };
 }
 
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
@@ -60,78 +60,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 
   try {
     const payload = parseRecipeUpdateInput(await request.json());
-
-    const updatePayload: Partial<Omit<Recipe, "id" | "createdAt">> = {};
-
-    if (payload.title !== undefined) {
-      updatePayload.title = payload.title;
-    }
-    if (payload.sourceRef !== undefined) {
-      updatePayload.sourceRef = payload.sourceRef;
-    }
-    if (payload.sourceType !== undefined) {
-      updatePayload.sourceType = payload.sourceType;
-    }
-    if (payload.description !== undefined) {
-      updatePayload.description = payload.description;
-    }
-    if (payload.servingCount !== undefined) {
-      updatePayload.servingCount = payload.servingCount;
-    }
-    if (payload.timeRequiredMinutes !== undefined) {
-      updatePayload.timeRequiredMinutes = payload.timeRequiredMinutes;
-    }
-    if (payload.heroPhotoUrl !== undefined) {
-      updatePayload.heroPhotoUrl = payload.heroPhotoUrl;
-    }
-
-    if (payload.tags) {
-      updatePayload.tags = payload.tags;
-    }
-
-    if (payload.ingredients) {
-      updatePayload.ingredients = toIngredientUpdates(
-        payload.ingredients.map((item, index): Ingredient => ({
-          id: recipeBefore.ingredients[index]?.id ?? randomUUID(),
-          position: index,
-          name: item.name,
-          quantityText: item.quantityText ?? null,
-          quantityValue: item.quantityValue ?? null,
-          quantityMin: item.quantityMin ?? null,
-          quantityMax: item.quantityMax ?? null,
-          unit: item.unit ?? null,
-          isWholeItem: item.isWholeItem ?? false,
-          optional: item.optional ?? false,
-          isPantryItem: item.isPantryItem ?? false
-        }))
-      );
-    }
-
-    if (payload.prepTasks) {
-      updatePayload.prepTasks = toPrepTaskUpdates(
-        payload.prepTasks.map((item, index): PrepTask => ({
-          id: recipeBefore.prepTasks[index]?.id ?? randomUUID(),
-          position: index,
-          title: item.title,
-          detail: item.detail ?? null
-        }))
-      );
-    }
-
-    if (payload.cookSteps) {
-      updatePayload.cookSteps = toCookStepUpdates(
-        payload.cookSteps.map((item, index): CookStep => ({
-          id: recipeBefore.cookSteps[index]?.id ?? randomUUID(),
-          position: index,
-          instruction: item.instruction,
-          detail: item.detail ?? null,
-          timerSeconds: item.timerSeconds ?? null,
-          prepTaskRefs: item.prepTaskRefs ?? []
-        }))
-      );
-    }
-
-    const recipeAfter = await updateRecipe(params.id, updatePayload);
+    const recipeAfter = await updateRecipe(params.id, normalizeFullRecipe(payload));
 
     if (!recipeAfter) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

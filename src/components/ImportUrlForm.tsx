@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import styles from "@/components/styles/import-url-form.module.css";
 
 interface ImportResponse {
   recipeId: string;
@@ -59,8 +60,10 @@ export function ImportUrlForm() {
   }
 
   return (
-    <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-      <label htmlFor="sourceUrl">Gousto recipe URL</label>
+    <form className={`card ${styles.form}`} onSubmit={onSubmit}>
+      <label className={styles.fieldLabel} htmlFor="sourceUrl">
+        Gousto recipe URL
+      </label>
       <input
         id="sourceUrl"
         type="url"
@@ -69,8 +72,11 @@ export function ImportUrlForm() {
         placeholder="https://www.gousto.co.uk/cookbook/..."
         onChange={(event) => setUrl(event.target.value)}
       />
-      <label htmlFor="importPrompt">Import prompt (optional)</label>
+      <label className={styles.fieldLabel} htmlFor="importPrompt">
+        Import prompt (optional)
+      </label>
       <textarea
+        className={styles.promptField}
         id="importPrompt"
         rows={4}
         value={prompt}
@@ -81,13 +87,15 @@ export function ImportUrlForm() {
         {loading ? "Importing..." : "Import recipe"}
       </button>
 
-      {error ? <p style={{ color: "#a22525", margin: 0 }}>{error}</p> : null}
+      {error ? <p className={styles.error}>{error}</p> : null}
       {result ? (
-        <div className="muted">
-          <p style={{ marginBottom: 6, marginTop: 0 }}>
+        <div className={styles.result}>
+          <p className={styles.resultLine}>
             Import status: {result.status} ({result.adapter})
           </p>
-          {result.warnings.length ? <p style={{ margin: 0 }}>Warnings: {result.warnings.join("; ")}</p> : null}
+          {result.warnings.length ? (
+            <p className={styles.resultLine}>Warnings: {result.warnings.join("; ")}</p>
+          ) : null}
         </div>
       ) : null}
     </form>

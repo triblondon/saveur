@@ -6,32 +6,63 @@ export type ImportStatus = components["schemas"]["ImportStatus"];
 export type FeedbackType = components["schemas"]["FeedbackType"];
 
 export type IngredientData = components["schemas"]["IngredientData"];
-export type IngredientInput = components["schemas"]["IngredientInput"];
-export type Ingredient = components["schemas"]["Ingredient"];
+export type Ingredient = IngredientData;
+export type IngredientInput = IngredientData;
 
 export type PrepTaskData = components["schemas"]["PrepTaskData"];
-export type PrepTaskInput = components["schemas"]["PrepTaskInput"];
-export type PrepTask = components["schemas"]["PrepTask"];
+export type PrepTask = PrepTaskData;
+export type PrepTaskInput = PrepTaskData;
 
 export type CookStepData = components["schemas"]["CookStepData"];
-export type CookStepDraftData = components["schemas"]["CookStepDraftData"];
-export type CookStepInput = components["schemas"]["CookStepInput"];
-export type CookStep = components["schemas"]["CookStep"];
+export type CookStep = CookStepData;
+export type CookStepInput = CookStepData;
+export type CookStepDraftData = CookStepData;
 
 export type ImportConfidence = components["schemas"]["ImportConfidence"];
-export type ImportDraft = components["schemas"]["ImportDraft"];
+export type RecipeMetaData = components["schemas"]["RecipeMetaData"];
+export type BaseRecipe = components["schemas"]["BaseRecipe"];
+export type RecipeFromLlmImport = components["schemas"]["RecipeFromLlmImport"];
 
-export type RecipeCreateInput = components["schemas"]["RecipeCreateInput"];
-export type RecipeUpdateInput = components["schemas"]["RecipeUpdateInput"];
 export type Recipe = components["schemas"]["Recipe"];
 
-export type SourceSnapshot = components["schemas"]["SourceSnapshot"];
-export type ImportRun = components["schemas"]["ImportRun"];
 export type ImportFeedback = components["schemas"]["ImportFeedback"];
-export type StoreData = components["schemas"]["StoreData"];
-
 export type ImportUrlRequest = components["schemas"]["ImportUrlRequest"];
 export type ReimportRecipeRequest = components["schemas"]["ReimportRecipeRequest"];
+
+export type RecipeCreateInput = BaseRecipe;
+export type RecipeUpdateInput = BaseRecipe;
+export type ImportDraft = RecipeFromLlmImport;
+
+export interface SourceSnapshot {
+  id: string;
+  sourceUrl: string;
+  storageKey: string;
+  contentType: string;
+  fetchedAt: string;
+  fetchStatus: "OK" | "FAILED";
+}
+
+export interface ImportRun {
+  id: string;
+  ownerId: string | null;
+  sourceType: SourceType;
+  sourceUrl: string;
+  adapterName: string;
+  adapterVersion: string;
+  snapshotId: string | null;
+  status: ImportStatus;
+  usable: boolean;
+  confidenceOverall: number | null;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export interface StoreData {
+  recipes: Recipe[];
+  sourceSnapshots: SourceSnapshot[];
+  importRuns: ImportRun[];
+  importFeedback: ImportFeedback[];
+}
 
 export const SOURCE_TYPE_OPTIONS = ["MANUAL", "URL", "SCAN"] as const satisfies readonly SourceType[];
 export const UNIT_OPTIONS = [

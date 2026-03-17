@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject } from "ajv";
 import addFormats from "ajv-formats";
-import { getOpenApiRefSchema } from "@/lib/openapi";
+import { getOpenApiDereferencedSchema, getOpenApiRefSchema } from "@/lib/openapi";
 import type {
   ImportDraft,
   ImportUrlRequest,
@@ -39,7 +39,7 @@ function createParser<T>(schemaName: keyof import("@/generated/openapi").compone
 }
 
 function createValidator<T>(schemaName: keyof import("@/generated/openapi").components["schemas"]) {
-  const validate = ajv.compile(getOpenApiRefSchema(schemaName));
+  const validate = ajv.compile(getOpenApiDereferencedSchema(schemaName));
 
   return (value: unknown): { valid: true; value: T } | { valid: false; issues: ErrorObject[] } => {
     if (validate(value)) {
@@ -65,7 +65,7 @@ export function isValidationError(error: unknown): error is ValidationError {
 
 export const parseImportUrlRequest = createParser<ImportUrlRequest>("ImportUrlRequest");
 export const parseReimportRecipeRequest = createParser<ReimportRecipeRequest>("ReimportRecipeRequest");
-export const parseRecipeCreateInput = createParser<RecipeCreateInput>("RecipeCreateInput");
-export const parseRecipeUpdateInput = createParser<RecipeUpdateInput>("RecipeUpdateInput");
+export const parseRecipeCreateInput = createParser<RecipeCreateInput>("BaseRecipe");
+export const parseRecipeUpdateInput = createParser<RecipeUpdateInput>("BaseRecipe");
 
-export const validateImportDraft = createValidator<ImportDraft>("ImportDraft");
+export const validateImportDraft = createValidator<ImportDraft>("RecipeFromLlmImport");

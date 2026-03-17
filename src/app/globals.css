@@ -1,61 +1,48 @@
-:root {
-  --bg: #f4f1ea;
-  --surface: #fffdf8;
-  --ink: #1c1a17;
-  --muted: #57524a;
-  --accent: #266c43;
-  --accent-soft: #dbeedd;
-  --line: #d8d0c4;
-}
+@import "../styles/tokens.css";
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
-  margin: 0;
-  background: radial-gradient(circle at top left, #fffaf1, var(--bg));
-  color: var(--ink);
-  font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
-}
-
-a {
-  color: var(--accent);
-}
-
-main {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 24px 16px 56px;
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 14px;
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.inline-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.tag {
-  background: var(--accent-soft);
-  color: #134129;
-  border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 0.85rem;
+body {
+  background: radial-gradient(1200px 600px at 10% -20%, #ffffff 0, #f9fafb 45%, var(--bg) 100%);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+}
+
+a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+h1,
+h2,
+h3 {
+  margin-top: 0;
+  line-height: var(--line-height-tight);
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
 }
 
 input,
@@ -69,29 +56,86 @@ input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
-  background: white;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ring);
 }
 
 button {
-  border: 0;
-  border-radius: 10px;
-  padding: 10px 16px;
-  background: var(--accent);
-  color: white;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  background: var(--text-primary);
+  color: #ffffff;
+  font-weight: 600;
   cursor: pointer;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
+}
+
+button:hover {
+  background: #0b1220;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 button.secondary {
-  background: #ece4d6;
-  color: #30291f;
+  background: var(--surface-muted);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+button.secondary:hover {
+  background: var(--surface-strong);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.inline-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag {
+  background: var(--accent-soft);
+  color: #0c6a54;
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: var(--font-size-sm);
 }
 
 .row {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -102,15 +146,15 @@ button.secondary {
 
 .react-tags {
   position: relative;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   padding: 6px;
 }
 
 .react-tags.is-active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(38, 108, 67, 0.15);
+  box-shadow: 0 0 0 4px var(--ring);
 }
 
 .react-tags__label {
@@ -137,12 +181,12 @@ button.secondary {
 
 .react-tags__tag {
   border: 0;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: #134129;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-primary);
   margin: 0 6px 6px 0;
   padding: 4px 10px;
-  font-size: 0.86rem;
+  font-size: var(--font-size-sm);
 }
 
 .react-tags__tag::after {
@@ -150,8 +194,8 @@ button.secondary {
 }
 
 .react-tags__tag:hover {
-  background: var(--accent);
-  color: white;
+  background: var(--text-primary);
+  color: #ffffff;
 }
 
 .react-tags__combobox {
@@ -177,10 +221,10 @@ button.secondary {
   top: calc(100% + 4px);
   max-height: 220px;
   overflow-y: auto;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .react-tags__listbox-option {
@@ -189,5 +233,5 @@ button.secondary {
 
 .react-tags__listbox-option:hover,
 .react-tags__listbox-option.is-active {
-  background: #f3efe6;
+  background: var(--surface-muted);
 }

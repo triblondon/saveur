@@ -129,38 +129,24 @@ export interface components {
         ImportStatus: "SUCCESS" | "PARTIAL" | "FAILED";
         /** @enum {string} */
         FeedbackType: "EDIT" | "ADD" | "REMOVE";
+        /** @description A single ingredient with normalized fields.  Quantity fields should be filled where possible, but quantityText should always be filled to preserve the original text and any nuances that can't be captured in structured fields. */
         IngredientData: {
-            /** @description Ingredient name without quantity prefix. */
-            name: string;
-            /** @description Original quantity text, preserving fractions/ranges/to taste. */
-            quantityText: string | null;
-            /** @description Primary numeric quantity value when parseable. */
-            quantityValue: number | null;
-            /** @description Minimum quantity for ranges. */
-            quantityMin: number | null;
-            /** @description Maximum quantity for ranges. */
-            quantityMax: number | null;
-            /** @description Use null when unit is unknown or not explicit. */
-            unit: components["schemas"]["Unit"] | null;
-            /** @description True for countable whole items (eggs, onions, garlic cloves). */
-            isWholeItem: boolean;
-            /** @description True if ingredient is optional. */
-            optional: boolean;
-            /** @description True for assumed pantry staples like salt, pepper, oil or water. */
-            isPantryItem: boolean;
-        };
-        ImportIngredientData: {
             /**
-             * @description Ingredient name without quantity prefix.
-             * @example curry powder
+             * @description Ingredient name without quantity.  Sentence case.
+             * @example Curry powder
+             * @example White potatoes
+             * @example Eggs
+             * @example Whole milk
              */
             name: string;
             /**
              * @description Original quantity text, preserving fractions/ranges/to taste.
-             * @example 1
+             * @example 1tsp
+             * @example 2 cups
              * @example 1/2
              * @example 1-2
              * @example to taste
+             * @example a few sprigs
              */
             quantityText: string | null;
             /**
@@ -170,114 +156,75 @@ export interface components {
              */
             quantityValue: number | null;
             /**
-             * @description Minimum quantity for ranges.
+             * @description Minimum quantity, when the quantity text represents a range.
              * @example 1
              */
             quantityMin: number | null;
             /**
-             * @description Maximum quantity for ranges.
+             * @description Maximum quantity, when the quantity text represents a range.  Must be larger than quantityMin.
              * @example 2
              */
             quantityMax: number | null;
             /**
-             * @description Use null when unit is unknown or not explicit. Otherwise choose from allowed enum values UNIT, ML, GRAM, KG, TSP, TBSP, PINCH, HANDFUL, UNKNOWN.
+             * @description Unit of measurement for the quantity. Use UNKNOWN when unit is unknown or not explicit. Otherwise choose from allowed enum values.  Convert where needed to fit these units (for example, convert 1000g to 1kg).
              * @example GRAM
-             * @example TBSP
-             * @example UNIT
-             * @example null
+             * @example TSP
+             * @example UNKNOWN
+             * @enum {string}
              */
-            unit: components["schemas"]["Unit"] | null;
-            /**
-             * @description True for countable whole items (eggs, onions, garlic cloves).
-             * @example true
-             */
+            unit: "UNIT" | "ML" | "GRAM" | "KG" | "TSP" | "TBSP" | "PINCH" | "HANDFUL" | "UNKNOWN";
+            /** @description True for countable whole items that are typically indivisible (eggs, garlic cloves), false for non-countable items (flour, milk, sugar) or ingredients that are typically measured by weight or volume (onions, potatoes). */
             isWholeItem: boolean;
-            /**
-             * @description True if ingredient is optional, such as a garnish, add-in or optional flavouring.
-             * @example false
-             */
+            /** @description True only if ingredient is optional, such as a garnish, add-in or optional flavouring. */
             optional: boolean;
-            /**
-             * @description True for commonly assumed pantry staples (for example salt, pepper, oil, water) that can be assumed available in most kitchens.
-             * @example true
-             * @example false
-             */
+            /** @description True for commonly assumed pantry staples (for example salt, pepper, oil, water) that can be assumed available in most kitchens. */
             isPantryItem: boolean;
         };
-        IngredientInput: components["schemas"]["IngredientData"];
-        Ingredient: components["schemas"]["IngredientData"] & {
-            /** Format: uuid */
-            id: string;
-            position: number;
-        };
+        /** @description A single prep task, which uses one or more raw ingredients and should produce one single prepared ingredient. */
         PrepTaskData: {
-            /** @description Short task title. */
-            title: string;
-            /** @description Detailed prep instructions. */
-            detail: string | null;
-        };
-        /** @description A single prep task, which should produce one single prepared ingredient to be used in a single cook step. */
-        ImportPrepTaskData: {
             /**
-             * @description Heading for prep task, as terse as possible. Can be the resulting prepared ingredient name or a brief instruction.
+             * @description Name of the resulting prepared ingredient name.  Must not conflict with any raw ingredient names (IngredientData.name).
              * @example Spice mix
              * @example Stock
              * @example Soup base
-             * @example Peel eggs
-             * @example Chop onion
-             * @example Wash veg
+             * @example Peeled eggs
+             * @example Chopped onion
+             * @example Prepared vegetables
              */
-            title: string;
+            preparationName: string;
+            /** @description List of ingredient names used in this prep step.  Must match ingredient names from the ingredient list (IngredientData.name). */
+            sourceIngredients: string[];
             /**
-             * @description Detailed prep instructions. Include all processing details and ingredient names.
-             * @example Combine the curry powder and turmeric in a small bowl
+             * @description Detailed instructions for the prep task. Include all processing details and ingredient names.  Supports markdown.  Put raw ingredient names in **bold**.
+             * @example Combine the **curry powder** and **turmeric** in a small bowl
              */
             detail: string | null;
         };
-        PrepTaskInput: components["schemas"]["PrepTaskData"] & {
-            /** @description Transient form-local ID used to map cook-step references. */
-            localId?: string;
-        };
-        PrepTask: components["schemas"]["PrepTaskData"] & {
-            /** Format: uuid */
-            id: string;
-            position: number;
-        };
+        /** @description Ordered, heat/time-sensitive cooking step that cannot be done ahead of time. */
         CookStepData: {
-            instruction: string;
-            detail: string | null;
-            timerSeconds: number | null;
-            prepTaskRefs: string[];
-        };
-        /** @description Ordered, heat/time-sensitive cooking steps that cannot be done ahead of time. */
-        CookStepDraftData: {
             /**
-             * @description Terse description of the cooking step, ideally starting with a verb.
+             * @description Terse description of the cooking step, ideally starting with a verb. Focus on one primary action, even if multiple things are happening in the step, and put details in the detail field.  For example, say "Add spices" instead of "Add spices and cook".
              * @example Fry the onion
              * @example Bake fish
              * @example Add sauce and simmer
+             * @example Cook rice
+             * @example Add spice mix
+             * @example Garnish and serve
              */
             instruction: string;
             /**
-             * @description Detailed cooking instructions, including sequencing and timing details. Include ingredient names. Do not duplicate prep tasks here.
-             * @example Add the diced tomato with a pinch of salt and sugar and cook for 3-4 min or until the tomatoes have broken down
-             * @example null
+             * @description Detailed cooking instructions, including sequencing and timing details.  Include all relevant ingredient names.  Supports markdown.  Put ingredient names (both raw and prepared) in **bold** (don't bold names of pantry items)
+             * @example Add the **diced tomato** with a pinch of salt and sugar and cook for 3-4 min or until the tomatoes have broken down
              */
             detail: string | null;
+            /** @description List of raw ingredient and prepared ingredient names used in this cook step.  Must match ingredient names from the ingredient list (IngredientData.name) or prep task names (PrepTaskData.preparationName). */
+            sourceIngredients: string[];
             /**
              * @description Timer duration in seconds for timed steps. If no duration is explicitly mentioned, set null.
              * @example 360
              * @example null
              */
             timerSeconds: number | null;
-            /** @description Prep task indices used by this cook step. A prep task is typically consumed in one cook step but can be referenced by multiple steps when needed. */
-            prepTaskRefs: number[];
-        };
-        CookStepInput: components["schemas"]["CookStepData"];
-        CookStep: components["schemas"]["CookStepData"] & {
-            /** Format: uuid */
-            id: string;
-            position: number;
         };
         /** @description Model confidence scores from 0-1. */
         ImportConfidence: {
@@ -290,7 +237,8 @@ export interface components {
             /** @example 0.92 */
             overall: number;
         };
-        ImportDraft: {
+        /** @description Top-level, user-editable recipe metadata fields that are not specific to ingredients or cooking steps. */
+        RecipeMetaData: {
             /**
              * @description Human-friendly recipe title.
              * @example Classic Kedgeree With Roasted Tomatoes
@@ -307,7 +255,7 @@ export interface components {
              */
             heroPhotoUrl: string | null;
             /**
-             * @description Default servings this recipe is written for.
+             * @description Default number of servings this recipe is written for.
              * @example 2
              */
             servingCount: number | null;
@@ -318,96 +266,47 @@ export interface components {
             timeRequiredMinutes: number | null;
             /** @description Flat tags inferred from source categories, cuisine, or theme. */
             tags: string[];
-            /** @description Complete ingredient list with normalized fields. */
-            ingredients: components["schemas"]["ImportIngredientData"][];
-            /** @description Tasks to maximize mise en place. Chopping, slicing, washing, spice mixes, stocks, and non-heat-sensitive combinations are prep tasks. */
-            prepTasks: components["schemas"]["ImportPrepTaskData"][];
+            sourceType: components["schemas"]["SourceType"];
+            /** @description Original source reference, such as the URL for URL-sourced recipes or a note about where a manually entered recipe came from. */
+            sourceRef: string;
+            /** @description An additional prompt used during an LLM import to help guide the model. */
+            importPrompt: string | null;
+            /**
+             * Format: uuid
+             * @description The ID of the import run that created this recipe, if applicable.
+             */
+            importRunId: string | null;
+        };
+        /** @description All user-editable fields of a recipe, including metadata, ingredient list, prep tasks and cook steps (excluding system-generated fields like id and timestamps). */
+        BaseRecipe: components["schemas"]["RecipeMetaData"] & {
+            /** @description Complete raw ingredient list with normalized fields. */
+            ingredients: components["schemas"]["IngredientData"][];
+            /** @description Tasks to maximize mise en place, creating prepared ingredients that may be referenced in cook steps. Chopping, slicing, washing, spice mixes, stocks, and non-heat-sensitive combinations are prep tasks. */
+            prepTasks: components["schemas"]["PrepTaskData"][];
             /** @description Ordered heat/time-sensitive cooking steps that cannot be done ahead of time. */
-            cookSteps: components["schemas"]["CookStepDraftData"][];
-            confidence: components["schemas"]["ImportConfidence"];
-            /** @description Non-fatal caveats discovered while extracting data. */
-            warnings: string[];
+            cookSteps: components["schemas"]["CookStepData"][];
         };
-        RecipeCreateInput: {
-            title: string;
-            sourceType?: components["schemas"]["SourceType"];
-            sourceRef?: string;
-            importPrompt?: string | null;
-            description?: string | null;
-            tags?: string[];
-            servingCount?: number | null;
-            timeRequiredMinutes?: number | null;
-            heroPhotoUrl?: string | null;
-            ingredients: components["schemas"]["IngredientInput"][];
-            prepTasks: components["schemas"]["PrepTaskInput"][];
-            cookSteps: components["schemas"]["CookStepInput"][];
-        };
-        RecipeUpdateInput: {
-            title?: string;
-            sourceType?: components["schemas"]["SourceType"];
-            sourceRef?: string;
-            importPrompt?: string | null;
-            description?: string | null;
-            tags?: string[];
-            servingCount?: number | null;
-            timeRequiredMinutes?: number | null;
-            heroPhotoUrl?: string | null;
-            ingredients?: components["schemas"]["IngredientInput"][];
-            prepTasks?: components["schemas"]["PrepTaskInput"][];
-            cookSteps?: components["schemas"]["CookStepInput"][];
-        };
-        Recipe: {
+        /** @description A complete recipe including all system-generated fields. */
+        Recipe: components["schemas"]["BaseRecipe"] & {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             ownerId: string | null;
-            title: string;
-            sourceType: components["schemas"]["SourceType"];
-            sourceRef: string;
-            importPrompt: string | null;
-            description: string | null;
-            tags: string[];
-            timeRequiredMinutes: number | null;
-            servingCount: number | null;
-            heroPhotoUrl: string | null;
-            /** Format: uuid */
-            importRunId: string | null;
-            ingredients: components["schemas"]["Ingredient"][];
-            prepTasks: components["schemas"]["PrepTask"][];
-            cookSteps: components["schemas"]["CookStep"][];
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
         };
-        SourceSnapshot: {
-            /** Format: uuid */
-            id: string;
-            sourceUrl: string;
-            storageKey: string;
-            contentType: string;
-            /** Format: date-time */
-            fetchedAt: string;
-            /** @enum {string} */
-            fetchStatus: "OK" | "FAILED";
-        };
-        ImportRun: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            ownerId: string | null;
-            sourceType: components["schemas"]["SourceType"];
-            sourceUrl: string;
-            adapterName: string;
-            adapterVersion: string;
-            /** Format: uuid */
-            snapshotId: string | null;
-            status: components["schemas"]["ImportStatus"];
-            usable: boolean;
-            confidenceOverall: number | null;
-            errorMessage: string | null;
-            /** Format: date-time */
-            createdAt: string;
+        /** @description A recipe created from an LLM import, which includes additional fields related to the import process and model confidence, and narrows the sourceType and sourceRef to be specific to URL imports. */
+        RecipeFromLlmImport: components["schemas"]["BaseRecipe"] & {
+            /** @constant */
+            sourceType: "URL";
+            /** @description Original URL the recipe was imported from */
+            sourceRef: string;
+        } & {
+            confidence: components["schemas"]["ImportConfidence"];
+            /** @description Non-fatal caveats discovered while extracting data. */
+            warnings: string[];
         };
         ImportFeedback: {
             /** Format: uuid */
@@ -422,12 +321,6 @@ export interface components {
             feedbackType: components["schemas"]["FeedbackType"];
             /** Format: date-time */
             createdAt: string;
-        };
-        StoreData: {
-            recipes: components["schemas"]["Recipe"][];
-            sourceSnapshots: components["schemas"]["SourceSnapshot"][];
-            importRuns: components["schemas"]["ImportRun"][];
-            importFeedback: components["schemas"]["ImportFeedback"][];
         };
         ImportUrlRequest: {
             url: string;
@@ -519,7 +412,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecipeCreateInput"];
+                "application/json": components["schemas"]["BaseRecipe"];
             };
         };
         responses: {
@@ -594,7 +487,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RecipeUpdateInput"];
+                "application/json": components["schemas"]["BaseRecipe"];
             };
         };
         responses: {

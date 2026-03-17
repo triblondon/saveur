@@ -1,0 +1,26 @@
+.page {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.heading {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+}
+
+.description {
+  margin-top: -2px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}

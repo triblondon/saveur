@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { listRecipes } from "@/lib/store";
+import styles from "@/app/styles/home.module.css";
 
 interface HomeProps {
   searchParams: Promise<{ q?: string }>;
@@ -11,8 +13,8 @@ export default async function Home({ searchParams }: HomeProps) {
   const recipes = await listRecipes(query || undefined);
 
   return (
-    <section>
-      <form className="card" action="/" method="GET" style={{ display: "grid", gap: 10 }}>
+    <section className={styles.page}>
+      <form className={`card ${styles.searchCard}`} action="/" method="GET">
         <label htmlFor="q">Search recipes by title, ingredient, or tag</label>
         <input
           id="q"
@@ -20,55 +22,55 @@ export default async function Home({ searchParams }: HomeProps) {
           placeholder="e.g. kedgeree, haddock, spicy"
           defaultValue={query}
         />
-        <div className="row">
+        <div className={`row ${styles.searchActions}`}>
           <button type="submit">Search</button>
-          <Link href="/" style={{ alignSelf: "center" }}>
+          <Link className={styles.clearLink} href="/">
             Clear
           </Link>
         </div>
       </form>
 
       {recipes.length === 0 ? (
-        <p className="muted">No recipes found yet.</p>
+        <p className={`muted ${styles.empty}`}>No recipes found yet.</p>
       ) : (
-        recipes.map((recipe) => (
-          <article className="card" key={recipe.id}>
-            {recipe.heroPhotoUrl ? (
-              <Link href={`/recipes/${recipe.id}`}>
-                <img
-                  src={recipe.heroPhotoUrl}
-                  alt={recipe.title}
-                  style={{
-                    width: "100%",
-                    maxHeight: 220,
-                    objectFit: "cover",
-                    borderRadius: 12,
-                    marginBottom: 12
-                  }}
-                />
-              </Link>
-            ) : null}
-            <h2 style={{ marginTop: 0, marginBottom: 8 }}>
-              <Link href={`/recipes/${recipe.id}`}>{recipe.title}</Link>
-            </h2>
-            <p className="muted" style={{ marginTop: 0 }}>
-              {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
-              {" | "}
-              {recipe.servingCount ? `${recipe.servingCount} servings` : "Servings unknown"}
-              {" | "}
-              {recipe.sourceType}
-            </p>
-            {recipe.tags.length > 0 ? (
-              <ul className="inline-list">
-                {recipe.tags.map((tag) => (
-                  <li className="tag" key={tag}>
-                    {tag}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </article>
-        ))
+        <div className={styles.recipeList}>
+          {recipes.map((recipe) => (
+            <article className={`card ${styles.recipeCard}`} key={recipe.id}>
+              {recipe.heroPhotoUrl ? (
+                <Link className={styles.heroLink} href={`/recipes/${recipe.id}`}>
+                  <Image
+                    className={styles.heroImage}
+                    src={recipe.heroPhotoUrl}
+                    alt={recipe.title}
+                    width={1200}
+                    height={680}
+                  />
+                </Link>
+              ) : null}
+              <h2 className={styles.recipeTitle}>
+                <Link className={styles.recipeTitleLink} href={`/recipes/${recipe.id}`}>
+                  {recipe.title}
+                </Link>
+              </h2>
+              <p className={`muted ${styles.meta}`}>
+                {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
+                {" | "}
+                {recipe.servingCount ? `${recipe.servingCount} servings` : "Servings unknown"}
+                {" | "}
+                {recipe.sourceType}
+              </p>
+              {recipe.tags.length > 0 ? (
+                <ul className="inline-list">
+                  {recipe.tags.map((tag) => (
+                    <li className="tag" key={tag}>
+                      {tag}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </article>
+          ))}
+        </div>
       )}
     </section>
   );

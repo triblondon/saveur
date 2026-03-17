@@ -1,0 +1,55 @@
+:root {
+  color-scheme: light;
+
+  --bg: #f7f7f8;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-muted: #f2f4f7;
+  --surface-strong: #ebeff4;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-tertiary: #6b7280;
+
+  --border-subtle: #e5e7eb;
+  --border-strong: #d1d5db;
+  --ring: rgba(16, 163, 127, 0.28);
+
+  --accent: #10a37f;
+  --accent-strong: #0d8a6d;
+  --accent-soft: #e6f7f3;
+
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.06);
+  --shadow-md: 0 8px 30px rgba(17, 24, 39, 0.08);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  --font-sans: "Soehne", "Söhne", "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+
+  --line-height-tight: 1.2;
+  --line-height-base: 1.45;
+
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+}

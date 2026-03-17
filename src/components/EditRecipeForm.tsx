@@ -13,6 +13,7 @@ import {
   type Recipe,
   type SourceType
 } from "@/lib/types";
+import styles from "@/components/styles/edit-recipe-form.module.css";
 
 type IngredientFormItem = Omit<
   IngredientInput,
@@ -22,7 +23,7 @@ type IngredientFormItem = Omit<
   quantity: string;
 };
 
-type PrepTaskFormItem = Omit<PrepTaskInput, "localId" | "detail"> & {
+type PrepTaskFormItem = Omit<PrepTaskInput, "detail"> & {
   id: string;
   detail: string;
 };
@@ -30,13 +31,9 @@ type PrepTaskFormItem = Omit<PrepTaskInput, "localId" | "detail"> & {
 type CookStepFormItem = Omit<CookStepInput, "timerSeconds" | "detail"> & {
   id: string;
   detail: string;
+  sourceIngredients: string[];
   timerSeconds: string;
 };
-
-interface TagOption {
-  id: string;
-  label: string;
-}
 
 const DEFAULT_TAG_SUGGESTIONS = [
   "Chicken",
@@ -91,21 +88,10 @@ function RemoveXButton(props: { label: string; onClick: () => void; disabled?: b
   return (
     <button
       type="button"
-      className="secondary"
+      className={`secondary ${styles.removeButton}`}
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      style={{
-        position: "absolute",
-        top: 10,
-        right: 10,
-        width: 30,
-        height: 30,
-        padding: 0,
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center"
-      }}
     >
       x
     </button>
@@ -180,50 +166,70 @@ function TagsInput(props: { values: string[]; onChange: (next: string[]) => void
   );
 }
 
-function PrepTaskRefsInput(props: {
-  selectedIds: string[];
-  options: TagOption[];
+function NameListInput(props: {
+  id: string;
+  labelText: string;
+  values: string[];
+  suggestions: string[];
+  placeholderText: string;
   onChange: (next: string[]) => void;
-  inputId: string;
 }) {
-  const { selectedIds, options, onChange, inputId } = props;
+  const { id, labelText, values, suggestions, placeholderText, onChange } = props;
 
-  const selected = useMemo<Tag[]>(() => {
-    return selectedIds
-      .map((id) => options.find((option) => option.id === id))
-      .filter((option): option is TagOption => Boolean(option))
-      .map((option) => ({
-        label: option.label,
-        value: option.id
-      }));
-  }, [options, selectedIds]);
-
-  const suggestions = useMemo<Tag[]>(
+  const selected = useMemo<Tag[]>(
     () =>
-      options.map((option) => ({
-        label: option.label,
-        value: option.id
+      values.map((label) => ({
+        label,
+        value: label.toLowerCase()
       })),
-    [options]
+    [values]
   );
+
+  const available = useMemo<Tag[]>(() => {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+
+    for (const label of suggestions) {
+      const normalized = normalizeTagLabel(label);
+      const key = normalized.toLowerCase();
+      if (!normalized || seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      labels.push(normalized);
+    }
+
+    return labels.map((label) => ({
+      label,
+      value: label.toLowerCase()
+    }));
+  }, [suggestions]);
 
   return (
     <ReactTags
-      id={inputId}
-      labelText="Prep task references"
+      id={id}
+      labelText={labelText}
       selected={selected}
-      suggestions={suggestions}
-      placeholderText="Associate prep tasks"
-      noOptionsText="No prep tasks"
+      suggestions={available}
+      allowNew
+      newOptionText="Add: %value%"
+      placeholderText={placeholderText}
+      noOptionsText="No matching items"
       onAdd={(nextTag) => {
-        const id = String(nextTag.value);
-        if (!id || selectedIds.includes(id)) {
+        const label = normalizeTagLabel(nextTag.label);
+        if (!label) {
           return;
         }
 
-        onChange([...selectedIds, id]);
+        const exists = values.some((item) => item.toLowerCase() === label.toLowerCase());
+        if (exists) {
+          return;
+        }
+
+        onChange([...values, label]);
       }}
-      onDelete={(index) => onChange(selectedIds.filter((_, itemIndex) => itemIndex !== index))}
+      onDelete={(index) => onChange(values.filter((_, itemIndex) => itemIndex !== index))}
     />
   );
 }
@@ -249,7 +255,7 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
   const [ingredients, setIngredients] = useState<IngredientFormItem[]>(
     recipe && recipe.ingredients.length > 0
       ? recipe.ingredients.map((ingredient) => ({
-          id: ingredient.id,
+          id: makeLocalId("ingredient"),
           name: ingredient.name,
           quantity: serializeIngredientQuantity(ingredient),
           isWholeItem: ingredient.isWholeItem,
@@ -270,8 +276,9 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
   const [prepTasks, setPrepTasks] = useState<PrepTaskFormItem[]>(
     recipe
       ? recipe.prepTasks.map((task) => ({
-          id: task.id,
-          title: task.title,
+          id: makeLocalId("prep"),
+          preparationName: task.preparationName,
+          sourceIngredients: task.sourceIngredients,
           detail: task.detail ?? ""
         }))
       : []
@@ -279,19 +286,19 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
   const [cookSteps, setCookSteps] = useState<CookStepFormItem[]>(
     recipe && recipe.cookSteps.length > 0
       ? recipe.cookSteps.map((step) => ({
-          id: step.id,
+          id: makeLocalId("cook"),
           instruction: step.instruction,
           detail: step.detail ?? "",
-          timerSeconds: step.timerSeconds !== null ? String(step.timerSeconds) : "",
-          prepTaskRefs: step.prepTaskRefs
+          sourceIngredients: step.sourceIngredients ?? [],
+          timerSeconds: step.timerSeconds !== null ? String(step.timerSeconds) : ""
         }))
       : [
           {
             id: makeLocalId("cook"),
             instruction: "",
             detail: "",
-            timerSeconds: "",
-            prepTaskRefs: []
+            sourceIngredients: [],
+            timerSeconds: ""
           }
         ]
   );
@@ -299,10 +306,18 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const prepTaskOptions: TagOption[] = prepTasks.map((task, index) => ({
-    id: task.id,
-    label: task.title.trim() || `Prep task ${index + 1}`
-  }));
+  const ingredientNameSuggestions = useMemo(
+    () => ingredients.map((item) => item.name.trim()).filter(Boolean),
+    [ingredients]
+  );
+  const prepOutputSuggestions = useMemo(
+    () => prepTasks.map((item) => item.preparationName.trim()).filter(Boolean),
+    [prepTasks]
+  );
+  const cookSourceSuggestions = useMemo(
+    () => [...ingredientNameSuggestions, ...prepOutputSuggestions],
+    [ingredientNameSuggestions, prepOutputSuggestions]
+  );
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -323,7 +338,7 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
             quantityValue: parsed?.quantityValue ?? null,
             quantityMin: parsed?.quantityMin ?? null,
             quantityMax: parsed?.quantityMax ?? null,
-            unit: parsed?.unit ?? null,
+            unit: parsed?.unit ?? "UNKNOWN",
             isWholeItem: item.isWholeItem,
             optional: item.optional,
             isPantryItem: item.isPantryItem
@@ -336,15 +351,17 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
         tags: tags.map((tag) => tag.trim()).filter(Boolean),
         sourceType,
         sourceRef: sourceRef.trim(),
+        importPrompt: recipe?.importPrompt ?? null,
+        importRunId: recipe?.importRunId ?? null,
         heroPhotoUrl: heroPhotoUrl.trim() || null,
         servingCount: parseOptionalNumber(servings),
         timeRequiredMinutes: parseOptionalNumber(minutes),
         ingredients: ingredientPayload,
         prepTasks: prepTasks
-          .filter((item) => item.title.trim().length > 0)
+          .filter((item) => item.preparationName.trim().length > 0)
           .map((item) => ({
-            title: item.title.trim(),
-            localId: item.id,
+            preparationName: item.preparationName.trim(),
+            sourceIngredients: item.sourceIngredients.map((name) => name.trim()).filter(Boolean),
             detail: item.detail.trim() || null
           })),
         cookSteps: cookSteps
@@ -352,8 +369,8 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
           .map((item) => ({
             instruction: item.instruction.trim(),
             detail: item.detail.trim() || null,
-            timerSeconds: parseOptionalNumber(item.timerSeconds),
-            prepTaskRefs: item.prepTaskRefs
+            sourceIngredients: item.sourceIngredients.map((name) => name.trim()).filter(Boolean),
+            timerSeconds: parseOptionalNumber(item.timerSeconds)
           }))
       };
 
@@ -427,7 +444,7 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card" style={{ display: "grid", gap: 14 }}>
+    <form onSubmit={onSubmit} className={`card ${styles.form}`}>
       <label>
         Title
         <input required value={title} onChange={(event) => setTitle(event.target.value)} />
@@ -438,8 +455,8 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
         <textarea rows={4} value={description} onChange={(event) => setDescription(event.target.value)} />
       </label>
 
-      <div style={{ display: "grid", gap: 6 }}>
-        <span>Tags</span>
+      <div className={styles.metaBlock}>
+        <span className={styles.metaLabel}>Tags</span>
         <TagsInput values={tags} onChange={setTags} />
       </div>
 
@@ -475,10 +492,10 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
         </label>
       </div>
 
-      <section style={{ display: "grid", gap: 10 }}>
-        <strong>Ingredients</strong>
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>Ingredients</h3>
         {ingredients.map((ingredient) => (
-          <div key={ingredient.id} className="card" style={{ marginBottom: 0, position: "relative", paddingTop: 20 }}>
+          <div key={ingredient.id} className={`card ${styles.itemCard}`}>
             <RemoveXButton
               label="Remove ingredient"
               onClick={() => setIngredients((previous) => previous.filter((item) => item.id !== ingredient.id))}
@@ -509,10 +526,9 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
                 }
               />
             </label>
-            <div className="row" style={{ alignItems: "center" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <div className={`row ${styles.checkboxRow}`}>
+              <label className={styles.checkboxLabel}>
                 <input
-                  style={{ width: "auto" }}
                   type="checkbox"
                   checked={ingredient.isWholeItem}
                   onChange={(event) =>
@@ -525,9 +541,8 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
                 />
                 Whole item
               </label>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <label className={styles.checkboxLabel}>
                 <input
-                  style={{ width: "auto" }}
                   type="checkbox"
                   checked={ingredient.optional}
                   onChange={(event) =>
@@ -540,9 +555,8 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
                 />
                 Optional
               </label>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <label className={styles.checkboxLabel}>
                 <input
-                  style={{ width: "auto" }}
                   type="checkbox"
                   checked={ingredient.isPantryItem}
                   onChange={(event) =>
@@ -579,33 +593,42 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
         </button>
       </section>
 
-      <section style={{ display: "grid", gap: 10 }}>
-        <strong>Prep tasks</strong>
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>Prep tasks</h3>
         {prepTasks.map((task) => (
-          <div key={task.id} className="card" style={{ marginBottom: 0, position: "relative", paddingTop: 20 }}>
+          <div key={task.id} className={`card ${styles.itemCard}`}>
             <RemoveXButton
               label="Remove prep task"
-              onClick={() => {
-                setPrepTasks((previous) => previous.filter((item) => item.id !== task.id));
-                setCookSteps((previous) =>
-                  previous.map((step) => ({
-                    ...step,
-                    prepTaskRefs: step.prepTaskRefs.filter((ref) => ref !== task.id)
-                  }))
-                );
-              }}
+              onClick={() => setPrepTasks((previous) => previous.filter((item) => item.id !== task.id))}
             />
             <label>
-              Title
+              Preparation name
               <input
-                value={task.title}
+                value={task.preparationName}
                 onChange={(event) =>
                   setPrepTasks((previous) =>
-                    previous.map((item) => (item.id === task.id ? { ...item, title: event.target.value } : item))
+                    previous.map((item) =>
+                      item.id === task.id ? { ...item, preparationName: event.target.value } : item
+                    )
                   )
                 }
               />
             </label>
+            <div className={styles.inlineField}>
+              <span className={styles.metaLabel}>Source ingredients</span>
+              <NameListInput
+                id={`prep-source-${task.id}`}
+                labelText="Prep source ingredients"
+                values={task.sourceIngredients}
+                suggestions={ingredientNameSuggestions}
+                placeholderText="Add ingredient names"
+                onChange={(next) =>
+                  setPrepTasks((previous) =>
+                    previous.map((item) => (item.id === task.id ? { ...item, sourceIngredients: next } : item))
+                  )
+                }
+              />
+            </div>
             <label>
               Detail
               <textarea
@@ -623,16 +646,21 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
         <button
           type="button"
           className="secondary"
-          onClick={() => setPrepTasks((previous) => [...previous, { id: makeLocalId("prep"), title: "", detail: "" }])}
+          onClick={() =>
+            setPrepTasks((previous) => [
+              ...previous,
+              { id: makeLocalId("prep"), preparationName: "", sourceIngredients: [], detail: "" }
+            ])
+          }
         >
           Add prep task
         </button>
       </section>
 
-      <section style={{ display: "grid", gap: 10 }}>
-        <strong>Cook steps</strong>
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>Cook steps</h3>
         {cookSteps.map((step) => (
-          <div key={step.id} className="card" style={{ marginBottom: 0, position: "relative", paddingTop: 20 }}>
+          <div key={step.id} className={`card ${styles.itemCard}`}>
             <RemoveXButton
               label="Remove cook step"
               onClick={() => setCookSteps((previous) => previous.filter((item) => item.id !== step.id))}
@@ -680,15 +708,17 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
                 }
               />
             </label>
-            <div style={{ display: "grid", gap: 6 }}>
-              <span>Prep task refs</span>
-              <PrepTaskRefsInput
-                inputId={`prep-ref-${step.id}`}
-                selectedIds={step.prepTaskRefs}
-                options={prepTaskOptions}
+            <div className={styles.inlineField}>
+              <span className={styles.metaLabel}>Source ingredients</span>
+              <NameListInput
+                id={`cook-source-${step.id}`}
+                labelText="Cook step source ingredients"
+                values={step.sourceIngredients}
+                suggestions={cookSourceSuggestions}
+                placeholderText="Add raw/prepared ingredient names"
                 onChange={(next) =>
                   setCookSteps((previous) =>
-                    previous.map((item) => (item.id === step.id ? { ...item, prepTaskRefs: next } : item))
+                    previous.map((item) => (item.id === step.id ? { ...item, sourceIngredients: next } : item))
                   )
                 }
               />
@@ -705,8 +735,8 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
                 id: makeLocalId("cook"),
                 instruction: "",
                 detail: "",
-                timerSeconds: "",
-                prepTaskRefs: []
+                sourceIngredients: [],
+                timerSeconds: ""
               }
             ])
           }
@@ -715,7 +745,7 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
         </button>
       </section>
 
-      <div className="row">
+      <div className={`row ${styles.actions}`}>
         <button type="submit" disabled={saving || deleting}>
           {saving ? (isEdit ? "Saving..." : "Creating...") : isEdit ? "Save changes" : "Create recipe"}
         </button>
@@ -725,7 +755,7 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
           </button>
         ) : null}
       </div>
-      {error ? <p style={{ margin: 0, color: "#a22525" }}>{error}</p> : null}
+      {error ? <p className={styles.error}>{error}</p> : null}
     </form>
   );
 }

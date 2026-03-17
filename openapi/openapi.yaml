@@ -29,7 +29,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RecipeCreateInput"
+              $ref: "#/components/schemas/BaseRecipe"
       responses:
         "201":
           description: Created
@@ -76,7 +76,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RecipeUpdateInput"
+              $ref: "#/components/schemas/BaseRecipe"
       responses:
         "200":
           description: Updated
@@ -258,6 +258,7 @@ components:
         - REMOVE
     IngredientData:
       type: object
+      description: A single ingredient with normalized fields.  Quantity fields should be filled where possible, but quantityText should always be filled to preserve the original text and any nuances that can't be captured in structured fields.
       additionalProperties: false
       required:
         - name
@@ -274,306 +275,150 @@ components:
           type: string
           minLength: 1
           maxLength: 120
-          description: Ingredient name without quantity prefix.
+          description: Ingredient name without quantity.  Sentence case.
+          examples:
+            - Curry powder
+            - White potatoes
+            - Eggs
+            - Whole milk
         quantityText:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
           maxLength: 40
           description: Original quantity text, preserving fractions/ranges/to taste.
+          examples:
+            - "1tsp"
+            - "2 cups"
+            - "1/2"
+            - "1-2"
+            - "to taste"
+            - "a few sprigs"
         quantityValue:
-          type:
-            - number
-            - "null"
+          type: [ number, "null" ]
           description: Primary numeric quantity value when parseable.
+          examples: [ 1, 0.5 ]
         quantityMin:
-          type:
-            - number
-            - "null"
-          description: Minimum quantity for ranges.
+          type: [ number, "null" ]
+          description: Minimum quantity, when the quantity text represents a range.
+          examples: [ 1 ]
         quantityMax:
-          type:
-            - number
-            - "null"
-          description: Maximum quantity for ranges.
+          type: [ number, "null" ]
+          description: Maximum quantity, when the quantity text represents a range.  Must be larger than quantityMin.
+          examples: [ 2 ]
         unit:
-          anyOf:
-            - $ref: "#/components/schemas/Unit"
-            - type: "null"
-          description: Use null when unit is unknown or not explicit.
-        isWholeItem:
-          type: boolean
-          description: True for countable whole items (eggs, onions, garlic cloves).
-        optional:
-          type: boolean
-          description: True if ingredient is optional.
-        isPantryItem:
-          type: boolean
-          description: True for assumed pantry staples like salt, pepper, oil or water.
-    ImportIngredientData:
-      type: object
-      additionalProperties: false
-      required:
-        - name
-        - quantityText
-        - quantityValue
-        - quantityMin
-        - quantityMax
-        - unit
-        - isWholeItem
-        - optional
-        - isPantryItem
-      properties:
-        name:
           type: string
-          minLength: 1
-          maxLength: 120
-          description: Ingredient name without quantity prefix.
-          examples:
-            - curry powder
-        quantityText:
-          type:
-            - string
-            - "null"
-          maxLength: 40
-          description: Original quantity text, preserving fractions/ranges/to taste.
-          examples:
-            - "1"
-            - 1/2
-            - 1-2
-            - to taste
-        quantityValue:
-          type:
-            - number
-            - "null"
-          description: Primary numeric quantity value when parseable.
-          examples:
-            - 1
-            - 0.5
-        quantityMin:
-          type:
-            - number
-            - "null"
-          description: Minimum quantity for ranges.
-          examples:
-            - 1
-        quantityMax:
-          type:
-            - number
-            - "null"
-          description: Maximum quantity for ranges.
-          examples:
-            - 2
-        unit:
-          anyOf:
-            - $ref: "#/components/schemas/Unit"
-            - type: "null"
-          description: Use null when unit is unknown or not explicit. Otherwise choose from allowed enum values UNIT, ML, GRAM, KG, TSP, TBSP, PINCH, HANDFUL, UNKNOWN.
-          examples:
-            - GRAM
-            - TBSP
+          description: Unit of measurement for the quantity. Use UNKNOWN when unit is unknown or not explicit. Otherwise choose from allowed enum values.  Convert where needed to fit these units (for example, convert 1000g to 1kg).
+          enum:
             - UNIT
-            - null
+            - ML
+            - GRAM
+            - KG
+            - TSP
+            - TBSP
+            - PINCH
+            - HANDFUL
+            - UNKNOWN
+          examples: [ GRAM, TSP, UNKNOWN ]
         isWholeItem:
           type: boolean
-          description: True for countable whole items (eggs, onions, garlic cloves).
-          examples:
-            - true
+          description: True for countable whole items that are typically indivisible (eggs, garlic cloves), false for non-countable items (flour, milk, sugar) or ingredients that are typically measured by weight or volume (onions, potatoes).
         optional:
           type: boolean
-          description: True if ingredient is optional, such as a garnish, add-in or optional flavouring.
-          examples:
-            - false
+          description: True only if ingredient is optional, such as a garnish, add-in or optional flavouring.
         isPantryItem:
           type: boolean
           description: True for commonly assumed pantry staples (for example salt, pepper, oil, water) that can be assumed available in most kitchens.
-          examples:
-            - true
-            - false
-    IngredientInput:
-      $ref: "#/components/schemas/IngredientData"
-    Ingredient:
-      allOf:
-        - $ref: "#/components/schemas/IngredientData"
-        - type: object
-          additionalProperties: false
-          required:
-            - id
-            - position
-          properties:
-            id:
-              type: string
-              format: uuid
-            position:
-              type: integer
-              minimum: 0
     PrepTaskData:
       type: object
       additionalProperties: false
+      description: A single prep task, which uses one or more raw ingredients and should produce one single prepared ingredient.
       required:
-        - title
+        - preparationName
         - detail
+        - sourceIngredients
       properties:
-        title:
-          type: string
-          minLength: 1
-          maxLength: 80
-          description: Short task title.
-        detail:
-          type:
-            - string
-            - "null"
-          maxLength: 1200
-          description: Detailed prep instructions.
-    ImportPrepTaskData:
-      type: object
-      additionalProperties: false
-      required:
-        - title
-        - detail
-      description: A single prep task, which should produce one single prepared ingredient to be used in a single cook step.
-      properties:
-        title:
+        preparationName:
           type: string
           minLength: 5
           maxLength: 30
-          description: Heading for prep task, as terse as possible. Can be the resulting prepared ingredient name or a brief instruction.
+          description: Name of the resulting prepared ingredient name.  Must not conflict with any raw ingredient names (IngredientData.name).
           examples:
             - Spice mix
             - Stock
             - Soup base
-            - Peel eggs
-            - Chop onion
-            - Wash veg
+            - Peeled eggs
+            - Chopped onion
+            - Prepared vegetables
+        sourceIngredients:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: List of ingredient names used in this prep step.  Must match ingredient names from the ingredient list (IngredientData.name).
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+            examples:
+              - Curry powder
+              - Turmeric
+              - Eggs
+              - Onions
+              - Tomatoes
         detail:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
           maxLength: 1200
-          description: Detailed prep instructions. Include all processing details and ingredient names.
+          description: Detailed instructions for the prep task. Include all processing details and ingredient names.  Supports markdown.  Put raw ingredient names in **bold**.
           examples:
-            - Combine the curry powder and turmeric in a small bowl
-    PrepTaskInput:
-      allOf:
-        - $ref: "#/components/schemas/PrepTaskData"
-        - type: object
-          additionalProperties: false
-          properties:
-            localId:
-              type: string
-              minLength: 1
-              maxLength: 120
-              description: Transient form-local ID used to map cook-step references.
-    PrepTask:
-      allOf:
-        - $ref: "#/components/schemas/PrepTaskData"
-        - type: object
-          additionalProperties: false
-          required:
-            - id
-            - position
-          properties:
-            id:
-              type: string
-              format: uuid
-            position:
-              type: integer
-              minimum: 0
+            - Combine the **curry powder** and **turmeric** in a small bowl
     CookStepData:
       type: object
+      description: Ordered, heat/time-sensitive cooking step that cannot be done ahead of time.
       additionalProperties: false
       required:
         - instruction
         - detail
+        - sourceIngredients
         - timerSeconds
-        - prepTaskRefs
       properties:
         instruction:
           type: string
           minLength: 1
-          maxLength: 80
-        detail:
-          type:
-            - string
-            - "null"
-          maxLength: 1400
-        timerSeconds:
-          type:
-            - integer
-            - "null"
-          minimum: 0
-          maximum: 86400
-        prepTaskRefs:
-          type: array
-          items:
-            type: string
-          maxItems: 20
-    CookStepDraftData:
-      type: object
-      additionalProperties: false
-      required:
-        - instruction
-        - detail
-        - timerSeconds
-        - prepTaskRefs
-      description: Ordered, heat/time-sensitive cooking steps that cannot be done ahead of time.
-      properties:
-        instruction:
-          type: string
-          minLength: 3
           maxLength: 50
-          description: Terse description of the cooking step, ideally starting with a verb.
+          description: Terse description of the cooking step, ideally starting with a verb. Focus on one primary action, even if multiple things are happening in the step, and put details in the detail field.  For example, say "Add spices" instead of "Add spices and cook".
           examples:
             - Fry the onion
             - Bake fish
             - Add sauce and simmer
+            - Cook rice
+            - Add spice mix
+            - Garnish and serve
         detail:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
           maxLength: 1400
-          description: Detailed cooking instructions, including sequencing and timing details. Include ingredient names. Do not duplicate prep tasks here.
+          description: Detailed cooking instructions, including sequencing and timing details.  Include all relevant ingredient names.  Supports markdown.  Put ingredient names (both raw and prepared) in **bold** (don't bold names of pantry items)
           examples:
-            - Add the diced tomato with a pinch of salt and sugar and cook for 3-4 min or until the tomatoes have broken down
-            - null
+            - Add the **diced tomato** with a pinch of salt and sugar and cook for 3-4 min or until the tomatoes have broken down
+        sourceIngredients:
+          type: array
+          minItems: 1
+          maxItems: 20
+          description: List of raw ingredient and prepared ingredient names used in this cook step.  Must match ingredient names from the ingredient list (IngredientData.name) or prep task names (PrepTaskData.preparationName).
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+            examples:
+              - Curry powder
+              - Eggs
+              - Tomatoes
+              - Spice mix
+              - Peeled eggs
+              - Diced tomatoes
         timerSeconds:
-          type:
-            - integer
-            - "null"
-          minimum: 1
+          type: [integer, "null"]
+          minimum: 0
           maximum: 86400
           description: Timer duration in seconds for timed steps. If no duration is explicitly mentioned, set null.
-          examples:
-            - 360
-            - null
-        prepTaskRefs:
-          type: array
-          items:
-            type: integer
-            minimum: 0
-            maximum: 200
-            description: Zero-based index pointer into prepTasks.
-            examples:
-              - 0
-          maxItems: 20
-          description: Prep task indices used by this cook step. A prep task is typically consumed in one cook step but can be referenced by multiple steps when needed.
-    CookStepInput:
-      $ref: "#/components/schemas/CookStepData"
-    CookStep:
-      allOf:
-        - $ref: "#/components/schemas/CookStepData"
-        - type: object
-          additionalProperties: false
-          required:
-            - id
-            - position
-          properties:
-            id:
-              type: string
-              format: uuid
-            position:
-              type: integer
-              minimum: 0
+          examples: [ 360, null ]
     ImportConfidence:
       type: object
       additionalProperties: false
@@ -608,8 +453,9 @@ components:
           maximum: 1
           examples:
             - 0.92
-    ImportDraft:
+    RecipeMetaData:
       type: object
+      description: Top-level, user-editable recipe metadata fields that are not specific to ingredients or cooking steps. 
       additionalProperties: false
       required:
         - title
@@ -618,11 +464,10 @@ components:
         - servingCount
         - timeRequiredMinutes
         - tags
-        - ingredients
-        - prepTasks
-        - cookSteps
-        - confidence
-        - warnings
+        - sourceType
+        - sourceRef
+        - importPrompt
+        - importRunId
       properties:
         title:
           type: string
@@ -632,33 +477,25 @@ components:
           examples:
             - Classic Kedgeree With Roasted Tomatoes
         description:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
           maxLength: 1200
           description: Short summary of the dish or recipe description from source.
           examples:
             - Rich and comforting kedgeree with smoky fish and roasted tomatoes.
         heroPhotoUrl:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
           description: URL of the best available hero image of the dish, likely the largest image on the page.
           examples:
             - https://example.com/recipe-photo.jpg
         servingCount:
-          type:
-            - number
-            - "null"
+          type: [ integer, "null" ]
           minimum: 1
           maximum: 20
-          description: Default servings this recipe is written for.
+          description: Default number of servings this recipe is written for.
           examples:
             - 2
         timeRequiredMinutes:
-          type:
-            - number
-            - "null"
+          type: [ integer, "null" ]
           minimum: 1
           maximum: 600
           description: Total time in minutes when inferable.
@@ -676,308 +513,110 @@ components:
               - British
               - Gluten Free
           description: Flat tags inferred from source categories, cuisine, or theme.
-        ingredients:
-          type: array
-          minItems: 1
-          maxItems: 120
-          description: Complete ingredient list with normalized fields.
-          items:
-            $ref: "#/components/schemas/ImportIngredientData"
-        prepTasks:
-          type: array
-          maxItems: 80
-          description: Tasks to maximize mise en place. Chopping, slicing, washing, spice mixes, stocks, and non-heat-sensitive combinations are prep tasks.
-          items:
-            $ref: "#/components/schemas/ImportPrepTaskData"
-        cookSteps:
-          type: array
-          minItems: 1
-          maxItems: 120
-          description: Ordered heat/time-sensitive cooking steps that cannot be done ahead of time.
-          items:
-            $ref: "#/components/schemas/CookStepDraftData"
-        confidence:
-          $ref: "#/components/schemas/ImportConfidence"
-        warnings:
-          type: array
-          maxItems: 20
-          items:
-            type: string
-            minLength: 1
-            maxLength: 220
-            examples:
-              - Could not determine a hero image URL
-          description: Non-fatal caveats discovered while extracting data.
-    RecipeCreateInput:
-      type: object
-      additionalProperties: false
-      required:
-        - title
-        - ingredients
-        - prepTasks
-        - cookSteps
-      properties:
-        title:
-          type: string
-          minLength: 1
         sourceType:
           $ref: "#/components/schemas/SourceType"
         sourceRef:
           type: string
+          description: Original source reference, such as the URL for URL-sourced recipes or a note about where a manually entered recipe came from.
         importPrompt:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
+          description: An additional prompt used during an LLM import to help guide the model.
           maxLength: 4000
-        description:
-          type:
-            - string
-            - "null"
-        tags:
-          type: array
-          items:
-            type: string
-        servingCount:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
-        timeRequiredMinutes:
-          type:
-            - integer
-            - "null"
-          minimum: 1
-        heroPhotoUrl:
-          type:
-            - string
-            - "null"
-        ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/IngredientInput"
-        prepTasks:
-          type: array
-          items:
-            $ref: "#/components/schemas/PrepTaskInput"
-        cookSteps:
-          type: array
-          items:
-            $ref: "#/components/schemas/CookStepInput"
-    RecipeUpdateInput:
-      type: object
-      additionalProperties: false
-      properties:
-        title:
-          type: string
-          minLength: 1
-        sourceType:
-          $ref: "#/components/schemas/SourceType"
-        sourceRef:
-          type: string
-        importPrompt:
-          type:
-            - string
-            - "null"
-          maxLength: 4000
-        description:
-          type:
-            - string
-            - "null"
-        tags:
-          type: array
-          items:
-            type: string
-        servingCount:
-          type:
-            - number
-            - "null"
-          exclusiveMinimum: 0
-        timeRequiredMinutes:
-          type:
-            - integer
-            - "null"
-          minimum: 1
-        heroPhotoUrl:
-          type:
-            - string
-            - "null"
-        ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/IngredientInput"
-        prepTasks:
-          type: array
-          items:
-            $ref: "#/components/schemas/PrepTaskInput"
-        cookSteps:
-          type: array
-          items:
-            $ref: "#/components/schemas/CookStepInput"
-    Recipe:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - ownerId
-        - title
-        - sourceType
-        - sourceRef
-        - importPrompt
-        - description
-        - tags
-        - timeRequiredMinutes
-        - servingCount
-        - heroPhotoUrl
-        - importRunId
-        - ingredients
-        - prepTasks
-        - cookSteps
-        - createdAt
-        - updatedAt
-      properties:
-        id:
-          type: string
-          format: uuid
-        ownerId:
-          type:
-            - string
-            - "null"
-          format: uuid
-        title:
-          type: string
-        sourceType:
-          $ref: "#/components/schemas/SourceType"
-        sourceRef:
-          type: string
-        importPrompt:
-          type:
-            - string
-            - "null"
-          maxLength: 4000
-        description:
-          type:
-            - string
-            - "null"
-        tags:
-          type: array
-          items:
-            type: string
-        timeRequiredMinutes:
-          type:
-            - number
-            - "null"
-        servingCount:
-          type:
-            - number
-            - "null"
-        heroPhotoUrl:
-          type:
-            - string
-            - "null"
         importRunId:
-          type:
-            - string
-            - "null"
+          type: [ string, "null" ]
+          description: The ID of the import run that created this recipe, if applicable.
           format: uuid
-        ingredients:
-          type: array
-          items:
-            $ref: "#/components/schemas/Ingredient"
-        prepTasks:
-          type: array
-          items:
-            $ref: "#/components/schemas/PrepTask"
-        cookSteps:
-          type: array
-          items:
-            $ref: "#/components/schemas/CookStep"
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    SourceSnapshot:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - sourceUrl
-        - storageKey
-        - contentType
-        - fetchedAt
-        - fetchStatus
-      properties:
-        id:
-          type: string
-          format: uuid
-        sourceUrl:
-          type: string
-        storageKey:
-          type: string
-        contentType:
-          type: string
-        fetchedAt:
-          type: string
-          format: date-time
-        fetchStatus:
-          type: string
-          enum:
-            - OK
-            - FAILED
-    ImportRun:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - ownerId
-        - sourceType
-        - sourceUrl
-        - adapterName
-        - adapterVersion
-        - snapshotId
-        - status
-        - usable
-        - confidenceOverall
-        - errorMessage
-        - createdAt
-      properties:
-        id:
-          type: string
-          format: uuid
-        ownerId:
-          type:
-            - string
-            - "null"
-          format: uuid
-        sourceType:
-          $ref: "#/components/schemas/SourceType"
-        sourceUrl:
-          type: string
-        adapterName:
-          type: string
-        adapterVersion:
-          type: string
-        snapshotId:
-          type:
-            - string
-            - "null"
-          format: uuid
-        status:
-          $ref: "#/components/schemas/ImportStatus"
-        usable:
-          type: boolean
-        confidenceOverall:
-          type:
-            - number
-            - "null"
-        errorMessage:
-          type:
-            - string
-            - "null"
-        createdAt:
-          type: string
-          format: date-time
+    BaseRecipe:
+      description: All user-editable fields of a recipe, including metadata, ingredient list, prep tasks and cook steps (excluding system-generated fields like id and timestamps).
+      allOf:
+        - $ref: "#/components/schemas/RecipeMetaData"
+        - type: object
+          additionalProperties: false
+          required:
+            - ingredients
+            - prepTasks
+            - cookSteps
+          properties:
+            ingredients:
+              type: array
+              minItems: 1
+              maxItems: 120
+              description: Complete raw ingredient list with normalized fields.
+              items:
+                $ref: "#/components/schemas/IngredientData"
+            prepTasks:
+              type: array
+              maxItems: 80
+              description: Tasks to maximize mise en place, creating prepared ingredients that may be referenced in cook steps. Chopping, slicing, washing, spice mixes, stocks, and non-heat-sensitive combinations are prep tasks.
+              items:
+                $ref: "#/components/schemas/PrepTaskData"
+            cookSteps:
+              type: array
+              minItems: 1
+              maxItems: 120
+              description: Ordered heat/time-sensitive cooking steps that cannot be done ahead of time.
+              items:
+                $ref: "#/components/schemas/CookStepData"
+    Recipe:
+      description: A complete recipe including all system-generated fields.
+      allOf:
+        - $ref: "#/components/schemas/BaseRecipe"
+        - type: object
+          additionalProperties: false
+          required:
+            - id
+            - ownerId
+            - createdAt
+            - updatedAt
+          properties:
+            id:
+              type: string
+              format: uuid
+            ownerId:
+              type:
+                - string
+                - "null"
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    RecipeFromLlmImport:
+      description: A recipe created from an LLM import, which includes additional fields related to the import process and model confidence, and narrows the sourceType and sourceRef to be specific to URL imports.
+      allOf:
+        - $ref: "#/components/schemas/BaseRecipe"
+        - type: object
+          additionalProperties: false
+          required:
+            - sourceType
+            - sourceRef
+          properties:
+            sourceType:
+              type: string
+              const: URL
+            sourceRef:
+              type: string
+              description: Original URL the recipe was imported from
+        - type: object
+          additionalProperties: false
+          required:
+            - confidence
+            - warnings
+          properties:
+            confidence:
+              $ref: "#/components/schemas/ImportConfidence"
+            warnings:
+              type: array
+              maxItems: 20
+              items:
+                type: string
+                minLength: 1
+                maxLength: 220
+                examples:
+                  - Could not determine a hero image URL
+              description: Non-fatal caveats discovered while extracting data.
     ImportFeedback:
       type: object
       additionalProperties: false
@@ -1009,31 +648,6 @@ components:
         createdAt:
           type: string
           format: date-time
-    StoreData:
-      type: object
-      additionalProperties: false
-      required:
-        - recipes
-        - sourceSnapshots
-        - importRuns
-        - importFeedback
-      properties:
-        recipes:
-          type: array
-          items:
-            $ref: "#/components/schemas/Recipe"
-        sourceSnapshots:
-          type: array
-          items:
-            $ref: "#/components/schemas/SourceSnapshot"
-        importRuns:
-          type: array
-          items:
-            $ref: "#/components/schemas/ImportRun"
-        importFeedback:
-          type: array
-          items:
-            $ref: "#/components/schemas/ImportFeedback"
     ImportUrlRequest:
       type: object
       additionalProperties: false

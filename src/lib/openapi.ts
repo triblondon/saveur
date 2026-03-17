@@ -20,6 +20,10 @@ function cloneDeep<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function resolvePointer(root: unknown, pointer: string): unknown {
   const tokens = pointer
     .split("/")
@@ -60,6 +64,59 @@ function dereferenceNode(node: unknown, root: unknown): unknown {
   return output;
 }
 
+function deepMergeSchemas(left: Record<string, unknown>, right: Record<string, unknown>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...left };
+
+  for (const [key, rightValue] of Object.entries(right)) {
+    const leftValue = merged[key];
+
+    if (key === "required" && Array.isArray(leftValue) && Array.isArray(rightValue)) {
+      merged[key] = Array.from(new Set([...leftValue, ...rightValue]));
+      continue;
+    }
+
+    if (isRecord(leftValue) && isRecord(rightValue)) {
+      merged[key] = deepMergeSchemas(leftValue, rightValue);
+      continue;
+    }
+
+    merged[key] = rightValue;
+  }
+
+  return merged;
+}
+
+function resolveAllOfDeep(node: unknown): unknown {
+  if (Array.isArray(node)) {
+    return node.map((entry) => resolveAllOfDeep(entry));
+  }
+
+  if (!isRecord(node)) {
+    return node;
+  }
+
+  const currentEntries = Object.entries(node).filter(([key]) => key !== "allOf");
+  const current: Record<string, unknown> = {};
+  for (const [key, value] of currentEntries) {
+    current[key] = resolveAllOfDeep(value);
+  }
+
+  const allOf = node.allOf;
+  if (!Array.isArray(allOf)) {
+    return current;
+  }
+
+  let merged: Record<string, unknown> = {};
+  for (const part of allOf) {
+    const resolvedPart = resolveAllOfDeep(part);
+    if (isRecord(resolvedPart)) {
+      merged = deepMergeSchemas(merged, resolvedPart);
+    }
+  }
+
+  return deepMergeSchemas(merged, current);
+}
+
 export function getOpenApiSchema(name: SchemaName): Record<string, unknown> {
   const schema = documentRoot.components.schemas[name as string];
   if (!schema || typeof schema !== "object") {
@@ -79,10 +136,11 @@ export function getOpenApiRefSchema(name: SchemaName): Record<string, unknown> {
 export function getOpenApiDereferencedSchema(name: SchemaName): Record<string, unknown> {
   const refSchema = getOpenApiRefSchema(name);
   const dereferenced = dereferenceNode(refSchema, refSchema);
+  const merged = resolveAllOfDeep(dereferenced);
 
-  if (!dereferenced || typeof dereferenced !== "object") {
+  if (!merged || typeof merged !== "object") {
     throw new Error(`Failed to dereference OpenAPI schema: ${String(name)}`);
   }
 
-  return dereferenced as Record<string, unknown>;
+  return merged as Record<string, unknown>;
 }

@@ -123,8 +123,6 @@ function extractJsonObject(text: string): unknown {
 }
 
 function normalizeOutput(output: ImportDraft): ParsedRecipeDraft {
-  const prepTaskCount = output.prepTasks.length;
-
   const tags: string[] = [];
   const seenTags = new Set<string>();
   for (const tag of output.tags) {
@@ -163,7 +161,8 @@ function normalizeOutput(output: ImportDraft): ParsedRecipeDraft {
       isPantryItem: ingredient.isPantryItem
     })),
     prepTasks: output.prepTasks.map((task) => ({
-      title: task.title.trim(),
+      preparationName: task.preparationName.trim(),
+      sourceIngredients: task.sourceIngredients.map((name) => name.trim()).filter(Boolean),
       detail: task.detail ? task.detail.trim() : null
     })),
     cookSteps: output.cookSteps.map((step) => {
@@ -174,8 +173,8 @@ function normalizeOutput(output: ImportDraft): ParsedRecipeDraft {
       return {
         instruction,
         detail,
-        timerSeconds: inferredTimer,
-        prepTaskRefs: step.prepTaskRefs.filter((index) => index >= 0 && index < prepTaskCount)
+        sourceIngredients: step.sourceIngredients?.map((name) => name.trim()).filter(Boolean),
+        timerSeconds: inferredTimer
       };
     }),
     confidence: output.confidence,
@@ -228,6 +227,8 @@ export async function extractRecipeDraftWithLlm(
       : "CUSTOM_IMPORT_PROMPT:\n[none]"
   ].join("\n");
 
+  console.log(getOpenApiDereferencedSchema("RecipeFromLlmImport"));
+
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -256,7 +257,7 @@ export async function extractRecipeDraftWithLlm(
           type: "json_schema",
           name: "saveur_recipe_import",
           strict: true,
-          schema: getOpenApiDereferencedSchema("ImportDraft")
+          schema: getOpenApiDereferencedSchema("RecipeFromLlmImport")
         }
       }
     })
@@ -272,7 +273,10 @@ export async function extractRecipeDraftWithLlm(
   const parsed = extractJsonObject(text);
   const validated = validateImportDraft(parsed);
 
+  console.log("LLM import output:", parsed);
+
   if (!validated.valid) {
+    console.log(validated.issues);
     const issue = validated.issues[0];
     const path = issue?.instancePath || "/";
     throw new Error(`LLM import output validation failed: ${path} ${issue?.message ?? "invalid"}`);
