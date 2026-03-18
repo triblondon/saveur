@@ -5,6 +5,7 @@
   "description": "Saveur recipe app with Gousto URL import",
   "scripts": {
     "generate:types": "openapi-typescript openapi/openapi.yaml -o src/generated/openapi.ts",
+    "db:migrate": "node scripts/migrate.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -16,9 +17,11 @@
     "node": ">=20.17.0"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.19.0",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",
     "next": "15.2.0",
+    "pg": "^8.20.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-markdown": "^10.1.0",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "22.13.10",
+    "@types/pg": "^8.18.0",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
     "eslint": "9.22.0",

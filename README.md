@@ -28,10 +28,10 @@ Unit enum values are sourced from app type defs (`UNIT_OPTIONS` in `src/lib/type
 
 - `src/lib/import/llm-import.ts`: single LLM import invocation + JSON schema
 - `src/lib/import/index.ts`: URL import orchestration
-- `src/lib/store.ts`: local JSON persistence and snapshot file storage
+- `src/lib/store.ts`: persistence facade (Neon Postgres when `DATABASE_URL` is set, file fallback otherwise)
 - `src/app/api/*`: API routes
 - `src/app/*`: basic UI routes
-- `db/schema.sql`: planned Postgres schema
+- `db/schema.sql`: Neon Postgres schema
 
 ## Run locally
 
@@ -40,12 +40,26 @@ Unit enum values are sourced from app type defs (`UNIT_OPTIONS` in `src/lib/type
 2. Set env vars:
    - `OPENAI_API_KEY=...`
    - optional `OPENAI_IMPORT_MODEL=...` (defaults to `gpt-4.1`)
-2. Start dev server:
+3. Start dev server:
    - `npm run dev`
-3. Open [http://localhost:3000](http://localhost:3000)
+4. Open [http://localhost:3000](http://localhost:3000)
 
 ## Notes
 
-- Local scaffold persistence is file-based (`data/store.json`) for rapid iteration.
-- Production target remains Postgres + object storage as defined in `db/schema.sql` and `PLAN.md`.
-- Photo upload endpoint is currently a placeholder (`501`).
+- If `DATABASE_URL` is not set, local file persistence is used (`data/store.json`) for fast iteration.
+- If `DATABASE_URL` is set, recipes/import runs/feedback/snapshots are persisted in Postgres.
+- Source snapshots and recipe photo uploads use GCS when `GCS_BUCKET` is set.
+
+## Vercel + Neon + GCS setup
+
+1. Neon
+   - Create a Neon project and copy the pooled connection string into `DATABASE_URL`.
+   - Run schema migration: `npm run db:migrate`
+2. GCS
+   - Create a bucket and set `GCS_BUCKET`.
+   - Add service account credentials in `GOOGLE_APPLICATION_CREDENTIALS_JSON` (raw JSON or base64-encoded JSON).
+   - For browser-visible image URLs, configure bucket/object public-read and optionally set `GCS_PUBLIC_BASE_URL`.
+3. Vercel
+   - Import the repo.
+   - Add environment variables from `.env.example`.
+   - Deploy and run `npm run db:migrate` against production DB before first import.

@@ -46,6 +46,13 @@ interface StepTimerInfo {
   durationSeconds: number;
 }
 
+const CREATED_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC"
+});
+
 function PauseIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -240,11 +247,7 @@ export function RecipeView({ recipe }: RecipeViewProps) {
       return recipe.createdAt;
     }
 
-    return new Intl.DateTimeFormat(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric"
-    }).format(parsed);
+    return CREATED_DATE_FORMATTER.format(parsed);
   }, [recipe.createdAt]);
 
   const timerInfoByStep = useMemo(() => {
@@ -402,6 +405,15 @@ export function RecipeView({ recipe }: RecipeViewProps) {
           <div className={styles.headerMeta}>
             <h2 className={styles.title}>{recipe.title}</h2>
             {recipe.description ? <p className={styles.description}>{recipe.description}</p> : null}
+            {recipe.tags.length > 0 ? (
+              <ul className={`inline-list ${styles.tagList}`}>
+                {recipe.tags.map((tag) => (
+                  <li className="tag" key={tag}>
+                    {tag}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <div className={`row ${styles.metaRow}`}>
               <label>
                 Servings

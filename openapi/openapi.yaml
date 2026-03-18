@@ -216,10 +216,46 @@ paths:
       - $ref: "#/components/parameters/RecipeIdParam"
     post:
       operationId: uploadRecipePhoto
-      summary: Upload recipe photo (not implemented)
+      summary: Upload recipe hero photo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
       responses:
-        "501":
-          description: Not implemented
+        "200":
+          description: Recipe updated with uploaded hero photo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeResponse"
+        "400":
+          description: Validation failed or object storage unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Recipe not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
           content:
             application/json:
               schema:

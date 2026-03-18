@@ -43,6 +43,10 @@
   color: var(--text-secondary);
 }
 
+.tagList {
+  margin: 2px 0 0;
+}
+
 .reimportPromptCard {
   margin-bottom: 0;
   display: grid;
