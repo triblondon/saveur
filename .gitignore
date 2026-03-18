@@ -4,5 +4,6 @@ npm-debug.log*
 .DS_Store
 .env
 .env.*
+!.env.example
 data/store.json
 data/snapshots/*.html

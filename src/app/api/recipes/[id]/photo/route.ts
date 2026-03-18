@@ -31,7 +31,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!isObjectStorageConfigured()) {
     return NextResponse.json(
       {
-        error: "Object storage is not configured. Set GCS_BUCKET to enable uploads."
+        error: "Object storage is not configured. Set BLOB_READ_WRITE_TOKEN to enable uploads."
       },
       { status: 400 }
     );
@@ -74,7 +74,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     storageKey,
     body: bytes,
     contentType: entry.type,
-    cacheControl: "public, max-age=31536000, immutable"
+    cacheControlMaxAge: 31_536_000
   });
 
   if (!stored.publicUrl) {

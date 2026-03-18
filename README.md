@@ -48,17 +48,16 @@ Unit enum values are sourced from app type defs (`UNIT_OPTIONS` in `src/lib/type
 
 - If `DATABASE_URL` is not set, local file persistence is used (`data/store.json`) for fast iteration.
 - If `DATABASE_URL` is set, recipes/import runs/feedback/snapshots are persisted in Postgres.
-- Source snapshots and recipe photo uploads use GCS when `GCS_BUCKET` is set.
+- Source snapshots and recipe photo uploads use Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set.
 
-## Vercel + Neon + GCS setup
+## Vercel + Neon + Vercel Blob setup
 
 1. Neon
    - Create a Neon project and copy the pooled connection string into `DATABASE_URL`.
    - Run schema migration: `npm run db:migrate`
-2. GCS
-   - Create a bucket and set `GCS_BUCKET`.
-   - Add service account credentials in `GOOGLE_APPLICATION_CREDENTIALS_JSON` (raw JSON or base64-encoded JSON).
-   - For browser-visible image URLs, configure bucket/object public-read and optionally set `GCS_PUBLIC_BASE_URL`.
+2. Vercel Blob
+   - Create a Blob store in Vercel.
+   - Set `BLOB_READ_WRITE_TOKEN` in the project environment variables.
 3. Vercel
    - Import the repo.
    - Add environment variables from `.env.example`.
