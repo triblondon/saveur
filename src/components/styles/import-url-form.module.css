@@ -3,9 +3,80 @@
   gap: var(--space-3);
 }
 
+.urlInputWrap {
+  position: relative;
+}
+
+.urlInput {
+  padding-right: 42px;
+}
+
+.scanButton {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  padding: 0;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanButton:hover {
+  background: var(--surface-strong);
+  color: var(--text-primary);
+}
+
 .fieldLabel {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
+}
+
+.scannerPanel {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  padding: var(--space-3);
+}
+
+.scannerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.scannerTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.closeScannerButton {
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: var(--font-size-sm);
+}
+
+.scannerViewport {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #000;
+  min-height: 220px;
+}
+
+.scannerHint {
+  margin: 0;
 }
 
 .promptField {

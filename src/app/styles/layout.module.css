@@ -7,10 +7,11 @@
   display: grid;
   gap: var(--space-3);
   padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid #1f2a3a;
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
-  box-shadow: var(--shadow-sm);
+  background: radial-gradient(600px 220px at 0% -20%, #1d2b40 0%, #111827 45%, #0a1020 100%);
+  color: #f8fafc;
+  box-shadow: 0 10px 35px rgba(2, 6, 23, 0.4);
 }
 
 .topRow {
@@ -23,6 +24,24 @@
 .brand {
   margin: 0;
   font-size: clamp(1.4rem, 2.5vw, 1.9rem);
+  letter-spacing: -0.02em;
+}
+
+.brandLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brandLink:hover {
+  text-decoration: none;
+}
+
+.brandLogo {
+  display: inline-flex;
+  align-items: center;
 }
 
 .nav {
@@ -33,9 +52,9 @@
 
 .navLink {
   padding: 7px 11px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-pill);
-  color: var(--text-secondary);
+  color: #d7deea;
   font-size: var(--font-size-sm);
   text-decoration: none;
   transition: border-color var(--duration-fast) ease, background var(--duration-fast) ease,
@@ -44,11 +63,12 @@
 
 .navLink:hover {
   text-decoration: none;
-  border-color: var(--border-strong);
-  background: var(--surface-muted);
-  color: var(--text-primary);
+  border-color: rgba(94, 234, 212, 0.55);
+  background: rgba(148, 163, 184, 0.12);
+  color: #f8fafc;
 }
 
 .subtitle {
   margin: 0;
+  color: #9fb2c9;
 }

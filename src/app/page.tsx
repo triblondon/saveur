@@ -16,17 +16,24 @@ export default async function Home({ searchParams }: HomeProps) {
     <section className={styles.page}>
       <form className={`card ${styles.searchCard}`} action="/" method="GET">
         <label htmlFor="q">Search recipes by title, ingredient, or tag</label>
-        <input
-          id="q"
-          name="q"
-          placeholder="e.g. kedgeree, haddock, spicy"
-          defaultValue={query}
-        />
-        <div className={`row ${styles.searchActions}`}>
-          <button type="submit">Search</button>
-          <Link className={styles.clearLink} href="/">
-            Clear
-          </Link>
+        <div className={styles.searchRow}>
+          <div className={styles.searchInputWrap}>
+            <input
+              className={styles.searchInput}
+              id="q"
+              name="q"
+              placeholder="e.g. kedgeree, haddock, spicy"
+              defaultValue={query}
+            />
+            {query ? (
+              <Link className={styles.clearIcon} href="/" aria-label="Clear search">
+                ×
+              </Link>
+            ) : null}
+          </div>
+          <button className={styles.searchButton} type="submit">
+            Search
+          </button>
         </div>
       </form>
 

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect, useRef } from "react";
 import type { Recipe } from "@/lib/types";
 import { scaleValue } from "@/lib/scaling";
+import { StepTimer, type StepTimerInfo } from "@/components/StepTimer";
 import styles from "@/components/styles/recipe-view.module.css";
 
 function formatSeconds(totalSeconds: number): string {
@@ -38,39 +39,12 @@ interface StepTimerState {
   pausedRemaining: number | null;
 }
 
-type TimerStatus = "idle" | "running" | "paused" | "done";
-
-interface StepTimerInfo {
-  status: TimerStatus;
-  remainingSeconds: number;
-  durationSeconds: number;
-}
-
 const CREATED_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
   month: "short",
   day: "numeric",
   timeZone: "UTC"
 });
-
-function PauseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M6 19h4V5H6zm8-14v14h4V5z" />
-    </svg>
-  );
-}
-
-function CancelIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
-      />
-    </svg>
-  );
-}
 
 interface RecipeViewProps {
   recipe: Recipe;
@@ -487,28 +461,15 @@ export function RecipeView({ recipe }: RecipeViewProps) {
         <ol className={styles.cookList}>
           {recipe.cookSteps.map((step, index) => {
             const stepKey = String(index);
-            const timerInfo = step.timerSeconds ? timerInfoByStep[stepKey] : null;
-            const timerStatus: TimerStatus = timerInfo?.status ?? "idle";
+            const timerInfo =
+              step.timerSeconds && step.timerSeconds > 0
+                ? (timerInfoByStep[stepKey] ?? {
+                    status: "idle",
+                    remainingSeconds: step.timerSeconds,
+                    durationSeconds: step.timerSeconds
+                  })
+                : null;
             const isHovered = hoveredTimerStepId === stepKey;
-            const timerButtonLabel = (() => {
-              if (!timerInfo) {
-                return "";
-              }
-
-              if (timerStatus === "running") {
-                return formatSeconds(timerInfo.remainingSeconds);
-              }
-
-              if (timerStatus === "paused") {
-                return `Resume ${formatSeconds(timerInfo.remainingSeconds)}`;
-              }
-
-              if (timerStatus === "done") {
-                return `Restart ${Math.round(timerInfo.durationSeconds / 60)} min`;
-              }
-
-              return `Start ${Math.round(timerInfo.durationSeconds / 60)} min`;
-            })();
 
             return (
               <li
@@ -520,47 +481,19 @@ export function RecipeView({ recipe }: RecipeViewProps) {
               >
                 <div className={styles.cookHeader}>
                   <strong className={styles.stepTitle}>{step.instruction}</strong>
-                  {step.timerSeconds ? (
-                    <div
-                      className={`${styles.timerShell} ${
-                        timerStatus === "idle" && isHovered ? styles.timerShellIdleHover : ""
-                      }`}
+                  {timerInfo ? (
+                    <StepTimer
+                      instruction={step.instruction}
+                      timerInfo={timerInfo}
+                      isHovered={isHovered}
                       onMouseEnter={() => setHoveredTimerStepId(stepKey)}
                       onMouseLeave={() =>
                         setHoveredTimerStepId((previous) => (previous === stepKey ? null : previous))
                       }
-                    >
-                      <div
-                        className={`${styles.timerControls} ${
-                          timerStatus === "running" && isHovered ? styles.timerControlsVisible : ""
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          aria-label={`Pause timer for ${step.instruction}`}
-                          onClick={() => pauseTimer(stepKey)}
-                          className={styles.timerControlButton}
-                        >
-                          <PauseIcon />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Cancel timer for ${step.instruction}`}
-                          onClick={() => cancelTimer(stepKey)}
-                          className={styles.timerControlButton}
-                        >
-                          <CancelIcon />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => startTimer(stepKey, step.timerSeconds!)}
-                        className={styles.timerMainButton}
-                      >
-                        <TimerIcon />
-                        {timerButtonLabel}
-                      </button>
-                    </div>
+                      onStart={() => startTimer(stepKey, step.timerSeconds!)}
+                      onPause={() => pauseTimer(stepKey)}
+                      onCancel={() => cancelTimer(stepKey)}
+                    />
                   ) : null}
                 </div>
                 {step.detail ? (

@@ -168,64 +168,6 @@
   font-weight: 700;
 }
 
-.timerShell {
-  display: inline-flex;
-  align-items: center;
-  background: #ece4d6;
-  color: #30291f;
-  border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  overflow: hidden;
-  transition: transform var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
-}
-
-.timerShellIdleHover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
-}
-
-.timerControls {
-  display: inline-flex;
-  width: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: width 140ms ease, opacity var(--duration-fast) ease;
-  pointer-events: none;
-}
-
-.timerControlsVisible {
-  width: 58px;
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.timerControlButton {
-  width: 29px;
-  height: 29px;
-  border: 0;
-  border-right: 1px solid var(--border-subtle);
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.timerMainButton {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  padding: 4px 8px;
-  font-size: 0.8rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: auto;
-  cursor: pointer;
-}
-
 .stickyContainerTop,
 .stickyContainerBottom {
   position: fixed;

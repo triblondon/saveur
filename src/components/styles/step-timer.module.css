@@ -1,0 +1,86 @@
+.timerShell {
+  display: inline-flex;
+  align-items: center;
+  background: #f1ebdf;
+  color: #30291f;
+  border-radius: 10px;
+  border: 1px solid #d7cbb6;
+  overflow: hidden;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+.timerShellIdleHover {
+  background: #efe8da;
+  border-color: #cab79a;
+}
+
+.timerShellRunning {
+  background: #c73538;
+  border-color: #9f2528;
+  color: #fff7f7;
+}
+
+.timerShellRunningHover {
+  background: #b92f32;
+  border-color: #8f2124;
+}
+
+.timerControls {
+  display: inline-flex;
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 140ms ease, opacity var(--duration-fast) ease;
+  pointer-events: none;
+}
+
+.timerControlsVisible {
+  width: 58px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.timerControlButton {
+  width: 29px;
+  height: 29px;
+  border: 0;
+  border-right: 1px solid rgba(0, 0, 0, 0.18);
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.timerControlButton:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: inherit;
+}
+
+.timerControlButton:focus-visible {
+  outline: 2px solid rgba(202, 183, 154, 0.9);
+  outline-offset: -2px;
+}
+
+.timerMainButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 88px;
+  width: auto;
+  text-align: center;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.timerMainButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
