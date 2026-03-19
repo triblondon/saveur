@@ -1,18 +1,24 @@
 import { randomUUID } from "node:crypto";
 import { query, withTransaction } from "@/lib/db";
 import { saveSnapshotHtml } from "@/lib/object-storage";
+import {
+  buildSearchBlob,
+  collectImportFeedback,
+  createImportedRecipeRecord,
+  createImportRunRecord,
+  createManualRecipeRecord,
+  updateRecipeFromDraft
+} from "@/lib/store-shared";
 import type {
   CookStep,
-  CookStepData,
   Ingredient,
-  IngredientData,
   ImportFeedback,
   ImportRun,
   ImportStatus,
   PrepTask,
-  PrepTaskData,
   Recipe,
   RecipeCreateInput,
+  RecipeSummary,
   SourceSnapshot,
   SourceType
 } from "@/lib/types";
@@ -35,6 +41,17 @@ interface RecipeRow {
   prep_tasks: unknown;
   cook_steps: unknown;
   created_at: Date | string;
+  updated_at: Date | string;
+}
+
+interface RecipeSummaryRow {
+  id: string;
+  title: string;
+  hero_photo_url: string | null;
+  serving_count: number | string | null;
+  time_required_minutes: number | null;
+  tags: unknown;
+  source_type: SourceType;
   updated_at: Date | string;
 }
 
@@ -127,66 +144,6 @@ function normalizeSearch(value: string): string {
   return value.toLowerCase().trim();
 }
 
-function normalizeTags(tags: string[]): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const tag of tags) {
-    const clean = tag.trim();
-    const key = clean.toLowerCase();
-
-    if (!clean || seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    normalized.push(clean);
-  }
-
-  return normalized;
-}
-
-function buildSearchBlob(recipe: {
-  title: string;
-  ingredients: Ingredient[];
-  tags: string[];
-}): string {
-  const ingredients = recipe.ingredients.map((item) => item.name).join(" ");
-  const tags = recipe.tags.join(" ");
-  return normalizeSearch(`${recipe.title} ${ingredients} ${tags}`);
-}
-
-function mapIngredients(input: IngredientData[]): Ingredient[] {
-  return input.map((item) => ({
-    name: item.name,
-    quantityText: item.quantityText,
-    quantityValue: item.quantityValue,
-    quantityMin: item.quantityMin,
-    quantityMax: item.quantityMax,
-    unit: item.unit,
-    isWholeItem: item.isWholeItem,
-    optional: item.optional,
-    isPantryItem: item.isPantryItem
-  }));
-}
-
-function mapPrepTasks(input: PrepTaskData[]): PrepTask[] {
-  return input.map((item) => ({
-    preparationName: item.preparationName,
-    sourceIngredients: item.sourceIngredients,
-    detail: item.detail
-  }));
-}
-
-function mapCookSteps(input: CookStepData[]): CookStep[] {
-  return input.map((item) => ({
-    instruction: item.instruction,
-    detail: item.detail,
-    sourceIngredients: item.sourceIngredients,
-    timerSeconds: item.timerSeconds
-  }));
-}
-
 function toRecipe(row: RecipeRow): Recipe {
   return {
     id: row.id,
@@ -205,6 +162,19 @@ function toRecipe(row: RecipeRow): Recipe {
     prepTasks: asPrepTasks(row.prep_tasks),
     cookSteps: asCookSteps(row.cook_steps),
     createdAt: asIso(row.created_at),
+    updatedAt: asIso(row.updated_at)
+  };
+}
+
+function toRecipeSummary(row: RecipeSummaryRow): RecipeSummary {
+  return {
+    id: row.id,
+    title: row.title,
+    heroPhotoUrl: row.hero_photo_url,
+    timeRequiredMinutes: row.time_required_minutes,
+    servingCount: parseInteger(row.serving_count),
+    sourceType: row.source_type,
+    tags: asStringArray(row.tags),
     updatedAt: asIso(row.updated_at)
   };
 }
@@ -333,6 +303,26 @@ async function insertOrUpdateRecipe(
 
 export type ManualRecipeInput = RecipeCreateInput;
 
+export async function listRecipeSummaries(queryText?: string): Promise<RecipeSummary[]> {
+  const baseSelect = `
+    SELECT id, title, hero_photo_url, serving_count, time_required_minutes, tags, source_type, updated_at
+    FROM recipes
+  `;
+
+  if (!queryText?.trim()) {
+    const result = await query<RecipeSummaryRow>(`${baseSelect} ORDER BY updated_at DESC`);
+    return result.rows.map(toRecipeSummary);
+  }
+
+  const needle = `%${normalizeSearch(queryText)}%`;
+  const result = await query<RecipeSummaryRow>(
+    `${baseSelect} WHERE search_blob ILIKE $1 ORDER BY updated_at DESC`,
+    [needle]
+  );
+
+  return result.rows.map(toRecipeSummary);
+}
+
 export async function listRecipes(queryText?: string): Promise<Recipe[]> {
   if (!queryText?.trim()) {
     const result = await query<RecipeRow>(
@@ -343,7 +333,7 @@ export async function listRecipes(queryText?: string): Promise<Recipe[]> {
 
   const needle = `%${normalizeSearch(queryText)}%`;
   const result = await query<RecipeRow>(
-    `SELECT * FROM recipes WHERE search_blob LIKE $1 ORDER BY updated_at DESC`,
+    `SELECT * FROM recipes WHERE search_blob ILIKE $1 ORDER BY updated_at DESC`,
     [needle]
   );
 
@@ -358,51 +348,12 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
 
 export async function createManualRecipe(input: ManualRecipeInput): Promise<Recipe> {
   const timestamp = nowIso();
-
-  const ingredients: Ingredient[] = input.ingredients.map((item) => ({
-    name: item.name,
-    quantityText: item.quantityText ?? null,
-    quantityValue: item.quantityValue ?? null,
-    quantityMin: item.quantityMin ?? null,
-    quantityMax: item.quantityMax ?? null,
-    unit: item.unit ?? "UNKNOWN",
-    isWholeItem: item.isWholeItem ?? false,
-    optional: item.optional ?? false,
-    isPantryItem: item.isPantryItem ?? false
-  }));
-
-  const prepTasks: PrepTask[] = input.prepTasks.map((item) => ({
-    preparationName: item.preparationName,
-    sourceIngredients: item.sourceIngredients,
-    detail: item.detail ?? null
-  }));
-
-  const cookSteps: CookStep[] = input.cookSteps.map((item) => ({
-    instruction: item.instruction,
-    detail: item.detail ?? null,
-    sourceIngredients: item.sourceIngredients,
-    timerSeconds: item.timerSeconds ?? null
-  }));
-
-  const recipe: Recipe = {
-    id: randomUUID(),
+  const recipe = createManualRecipeRecord({
+    input,
+    recipeId: randomUUID(),
     ownerId: null,
-    title: input.title.trim(),
-    sourceType: input.sourceType ?? "MANUAL",
-    sourceRef: input.sourceRef?.trim() || "",
-    importPrompt: input.importPrompt?.trim() || null,
-    description: input.description ?? null,
-    tags: normalizeTags(input.tags ?? []),
-    timeRequiredMinutes: input.timeRequiredMinutes ?? null,
-    servingCount: input.servingCount ?? null,
-    heroPhotoUrl: input.heroPhotoUrl ?? null,
-    importRunId: null,
-    ingredients,
-    prepTasks,
-    cookSteps,
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
+    timestamp
+  });
 
   await insertOrUpdateRecipe(query, recipe, timestamp);
   return recipe;
@@ -473,52 +424,25 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
   importRun: ImportRun;
 }> {
   const timestamp = nowIso();
-
-  const usable =
-    input.draft.title.trim().length > 0 &&
-    input.draft.ingredients.length > 0 &&
-    input.draft.cookSteps.length > 0;
-
-  const status: ImportStatus = usable
-    ? input.draft.warnings.length > 0
-      ? "PARTIAL"
-      : "SUCCESS"
-    : "FAILED";
-
-  const importRun: ImportRun = {
-    id: randomUUID(),
-    ownerId: null,
-    sourceType: "URL",
+  const importRun = createImportRunRecord({
     sourceUrl: input.sourceUrl,
     adapterName: input.adapterName,
     adapterVersion: input.adapterVersion,
     snapshotId: input.snapshotId,
-    status,
-    usable,
-    confidenceOverall: input.draft.confidence.overall,
-    errorMessage: usable ? null : "Recipe draft missing title, ingredients, or cook steps",
-    createdAt: timestamp
-  };
-
-  const recipe: Recipe = {
+    draft: input.draft,
     id: randomUUID(),
     ownerId: null,
-    title: input.draft.title,
-    sourceType: "URL",
-    sourceRef: input.sourceUrl,
+    createdAt: timestamp
+  });
+  const recipe = createImportedRecipeRecord({
+    draft: input.draft,
+    sourceUrl: input.sourceUrl,
     importPrompt: input.importPrompt?.trim() || null,
-    description: input.draft.description,
-    tags: normalizeTags(input.draft.tags),
-    timeRequiredMinutes: input.draft.timeRequiredMinutes,
-    servingCount: input.draft.servingCount,
-    heroPhotoUrl: input.draft.heroPhotoUrl,
     importRunId: importRun.id,
-    ingredients: mapIngredients(input.draft.ingredients),
-    prepTasks: mapPrepTasks(input.draft.prepTasks),
-    cookSteps: mapCookSteps(input.draft.cookSteps),
-    createdAt: timestamp,
-    updatedAt: timestamp
-  };
+    recipeId: randomUUID(),
+    ownerId: null,
+    createdAt: timestamp
+  });
 
   await withTransaction(async (tx) => {
     await tx(
@@ -578,17 +502,6 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
 } | null> {
   const timestamp = nowIso();
 
-  const usable =
-    input.draft.title.trim().length > 0 &&
-    input.draft.ingredients.length > 0 &&
-    input.draft.cookSteps.length > 0;
-
-  const status: ImportStatus = usable
-    ? input.draft.warnings.length > 0
-      ? "PARTIAL"
-      : "SUCCESS"
-    : "FAILED";
-
   return withTransaction(async (tx) => {
     const existingResult = await tx<RecipeRow>(
       `SELECT * FROM recipes WHERE id = $1 LIMIT 1 FOR UPDATE`,
@@ -602,38 +515,24 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
 
     const existing = toRecipe(existingRow);
 
-    const importRun: ImportRun = {
-      id: randomUUID(),
-      ownerId: existing.ownerId,
-      sourceType: "URL",
+    const importRun = createImportRunRecord({
       sourceUrl: input.sourceUrl,
       adapterName: input.adapterName,
       adapterVersion: input.adapterVersion,
       snapshotId: input.snapshotId,
-      status,
-      usable,
-      confidenceOverall: input.draft.confidence.overall,
-      errorMessage: usable ? null : "Recipe draft missing title, ingredients, or cook steps",
+      draft: input.draft,
+      id: randomUUID(),
+      ownerId: existing.ownerId,
       createdAt: timestamp
-    };
+    });
 
-    const next: Recipe = {
-      ...existing,
-      title: input.draft.title,
-      sourceType: "URL",
-      sourceRef: input.sourceUrl,
+    const next = updateRecipeFromDraft(existing, {
+      draft: input.draft,
+      sourceUrl: input.sourceUrl,
       importPrompt: input.importPrompt?.trim() || null,
-      description: input.draft.description,
-      tags: normalizeTags(input.draft.tags),
-      timeRequiredMinutes: input.draft.timeRequiredMinutes,
-      servingCount: input.draft.servingCount,
-      heroPhotoUrl: input.draft.heroPhotoUrl,
       importRunId: importRun.id,
-      ingredients: mapIngredients(input.draft.ingredients),
-      prepTasks: mapPrepTasks(input.draft.prepTasks),
-      cookSteps: mapCookSteps(input.draft.cookSteps),
       updatedAt: timestamp
-    };
+    });
 
     await tx(
       `
@@ -679,50 +578,11 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
   });
 }
 
-function jsonEqual(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 export async function captureImportFeedback(
   recipeBefore: Recipe,
   recipeAfter: Recipe
 ): Promise<ImportFeedback[]> {
-  if (!recipeBefore.importRunId || recipeBefore.importRunId !== recipeAfter.importRunId) {
-    return [];
-  }
-
-  const feedbackRows: ImportFeedback[] = [];
-  const fieldPaths: Array<keyof Recipe> = [
-    "title",
-    "description",
-    "timeRequiredMinutes",
-    "servingCount",
-    "ingredients",
-    "prepTasks",
-    "cookSteps",
-    "tags"
-  ];
-
-  for (const fieldPath of fieldPaths) {
-    const beforeValue = recipeBefore[fieldPath];
-    const afterValue = recipeAfter[fieldPath];
-
-    if (jsonEqual(beforeValue, afterValue)) {
-      continue;
-    }
-
-    feedbackRows.push({
-      id: randomUUID(),
-      importRunId: recipeBefore.importRunId,
-      recipeId: recipeBefore.id,
-      fieldPath,
-      originalValue: beforeValue,
-      finalValue: afterValue,
-      feedbackType: "EDIT",
-      createdAt: nowIso()
-    });
-  }
-
+  const feedbackRows = collectImportFeedback(recipeBefore, recipeAfter, randomUUID, nowIso);
   if (feedbackRows.length === 0) {
     return [];
   }

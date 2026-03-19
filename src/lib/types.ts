@@ -24,6 +24,10 @@ export type BaseRecipe = components["schemas"]["BaseRecipe"];
 export type RecipeFromLlmImport = components["schemas"]["RecipeFromLlmImport"];
 
 export type Recipe = components["schemas"]["Recipe"];
+export type RecipeSummary = Pick<
+  Recipe,
+  "id" | "title" | "heroPhotoUrl" | "timeRequiredMinutes" | "servingCount" | "sourceType" | "tags" | "updatedAt"
+>;
 
 export type ImportFeedback = components["schemas"]["ImportFeedback"];
 export type ImportUrlRequest = components["schemas"]["ImportUrlRequest"];

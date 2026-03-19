@@ -5,11 +5,13 @@ import type {
   ImportFeedback,
   ImportRun,
   Recipe,
+  RecipeSummary,
   SourceSnapshot
 } from "@/lib/types";
 import type { ParsedRecipeDraft } from "@/lib/import/types";
 
 interface StoreBackend {
+  listRecipeSummaries: (query?: string) => Promise<RecipeSummary[]>;
   listRecipes: (query?: string) => Promise<Recipe[]>;
   getRecipeById: (id: string) => Promise<Recipe | null>;
   createManualRecipe: (input: ManualRecipeInput) => Promise<Recipe>;
@@ -43,6 +45,10 @@ const backend: StoreBackend = isDatabaseConfigured() ? postgresStore : fileStore
 
 export async function listRecipes(query?: string): Promise<Recipe[]> {
   return backend.listRecipes(query);
+}
+
+export async function listRecipeSummaries(query?: string): Promise<RecipeSummary[]> {
+  return backend.listRecipeSummaries(query);
 }
 
 export async function getRecipeById(id: string): Promise<Recipe | null> {

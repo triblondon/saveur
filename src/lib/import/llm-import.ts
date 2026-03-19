@@ -1,10 +1,14 @@
 import { getOpenApiDereferencedSchema } from "@/lib/openapi";
 import { parseDurationSeconds } from "@/lib/parse/duration";
+import { normalizeParsedRecipeDraft } from "@/lib/recipe-domain";
 import type { ImportDraft } from "@/lib/types";
 import { validateImportDraft } from "@/lib/validation";
 import type { ParsedRecipeDraft } from "@/lib/import/types";
 
 const MODEL_DEFAULT = "gpt-4.1";
+const OPENAI_MAX_ATTEMPTS = 3;
+const OPENAI_BASE_BACKOFF_MS = 500;
+const LLM_IMPORT_SCHEMA = getOpenApiDereferencedSchema("RecipeFromLlmImport");
 
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) {
@@ -15,7 +19,14 @@ function truncate(text: string, maxChars: number): string {
 }
 
 async function fetchUrlMirrorMarkdown(url: string): Promise<string | null> {
-  const endpoint = `https://r.jina.ai/http://${url}`;
+  const sourceUrl = (() => {
+    try {
+      return new URL(url);
+    } catch {
+      return new URL(`https://${url}`);
+    }
+  })();
+  const endpoint = `https://r.jina.ai/${sourceUrl.toString()}`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
 
@@ -123,32 +134,13 @@ function extractJsonObject(text: string): unknown {
 }
 
 function normalizeOutput(output: ImportDraft): ParsedRecipeDraft {
-  const tags: string[] = [];
-  const seenTags = new Set<string>();
-  for (const tag of output.tags) {
-    const trimmed = tag.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    const key = trimmed.toLowerCase();
-    if (seenTags.has(key)) {
-      continue;
-    }
-
-    seenTags.add(key);
-    tags.push(trimmed);
-  }
-
-  const warnings = output.warnings.map((warning) => warning.trim()).filter(Boolean);
-
-  return {
+  const parsed: ParsedRecipeDraft = {
     title: output.title.trim(),
     description: output.description ? output.description.trim() : null,
     heroPhotoUrl: output.heroPhotoUrl,
     servingCount: output.servingCount,
     timeRequiredMinutes: output.timeRequiredMinutes,
-    tags,
+    tags: output.tags,
     ingredients: output.ingredients.map((ingredient) => ({
       name: ingredient.name.trim(),
       quantityText: ingredient.quantityText,
@@ -178,8 +170,87 @@ function normalizeOutput(output: ImportDraft): ParsedRecipeDraft {
       };
     }),
     confidence: output.confidence,
-    warnings
+    warnings: output.warnings
   };
+
+  return normalizeParsedRecipeDraft(parsed);
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 409 || status === 429 || (status >= 500 && status <= 599);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestOpenAiImport(
+  apiKey: string,
+  model: string,
+  prompt: string
+): Promise<unknown> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= OPENAI_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          max_output_tokens: 4_000,
+          tools: [{ type: "web_search_preview" }],
+          tool_choice: "auto",
+          input: [
+            {
+              role: "system",
+              content:
+                "You are a precise recipe extraction engine. Return only valid JSON matching the required schema. Never invent ingredients. Preserve original step order in cooking steps."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "saveur_recipe_import",
+              strict: true,
+              schema: LLM_IMPORT_SCHEMA
+            }
+          }
+        })
+      });
+
+      if (response.ok) {
+        return (await response.json()) as unknown;
+      }
+
+      const body = await response.text();
+      const message = `OpenAI import request failed (${response.status}): ${body.slice(0, 220)}`;
+      if (!isRetryableStatus(response.status) || attempt === OPENAI_MAX_ATTEMPTS) {
+        throw new Error(message);
+      }
+
+      lastError = new Error(message);
+    } catch (error) {
+      if (attempt === OPENAI_MAX_ATTEMPTS) {
+        throw error;
+      }
+
+      lastError = error instanceof Error ? error : new Error("OpenAI import request failed");
+    }
+
+    const backoffMs = OPENAI_BASE_BACKOFF_MS * 2 ** (attempt - 1);
+    await delay(backoffMs);
+  }
+
+  throw lastError ?? new Error("OpenAI import request failed");
 }
 
 interface ExtractRecipeDraftParams {
@@ -204,6 +275,7 @@ export async function extractRecipeDraftWithLlm(
   const model = process.env.OPENAI_IMPORT_MODEL ?? process.env.OPENAI_MODEL ?? MODEL_DEFAULT;
   const mirrorMarkdown = await fetchUrlMirrorMarkdown(params.url);
   const mirrorSnippet = mirrorMarkdown ? truncate(mirrorMarkdown, 32_000) : null;
+  const htmlSnippet = truncate(params.html, 24_000);
 
   const prompt = [
     `Review the recipe at ${params.url}.`,
@@ -222,61 +294,19 @@ export async function extractRecipeDraftWithLlm(
       ? `URL_MIRROR_MARKDOWN:\n${mirrorSnippet}`
       : "URL_MIRROR_MARKDOWN:\n[not available]",
     "",
+    `SOURCE_HTML_SNIPPET:\n${htmlSnippet}`,
+    "",
     params.prompt?.trim()
       ? `CUSTOM_IMPORT_PROMPT:\n${params.prompt.trim()}`
       : "CUSTOM_IMPORT_PROMPT:\n[none]"
   ].join("\n");
 
-  console.log(getOpenApiDereferencedSchema("RecipeFromLlmImport"));
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      max_output_tokens: 4_000,
-      tools: [{ type: "web_search_preview" }],
-      tool_choice: "auto",
-      input: [
-        {
-          role: "system",
-          content:
-            "You are a precise recipe extraction engine. Return only valid JSON matching the required schema. Never invent ingredients. Preserve original step order in cooking steps."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "saveur_recipe_import",
-          strict: true,
-          schema: getOpenApiDereferencedSchema("RecipeFromLlmImport")
-        }
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI import request failed (${response.status}): ${body.slice(0, 220)}`);
-  }
-
-  const payload = (await response.json()) as unknown;
+  const payload = await requestOpenAiImport(apiKey, model, prompt);
   const text = outputTextFromResponse(payload);
   const parsed = extractJsonObject(text);
   const validated = validateImportDraft(parsed);
 
-  console.log("LLM import output:", parsed);
-
   if (!validated.valid) {
-    console.log(validated.issues);
     const issue = validated.issues[0];
     const path = issue?.instancePath || "/";
     throw new Error(`LLM import output validation failed: ${path} ${issue?.message ?? "invalid"}`);

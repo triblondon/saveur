@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
 import { reimportRecipeFromUrl } from "@/lib/import";
 import { getRecipeById } from "@/lib/store";
-import {
-  formatValidationIssues,
-  isValidationError,
-  parseReimportRecipeRequest
-} from "@/lib/validation";
+import { parseReimportRecipeRequest } from "@/lib/validation";
+import { routeErrorResponse } from "@/lib/api/route-helpers";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
@@ -36,22 +33,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       status: result.status === "FAILED" ? 422 : 200
     });
   } catch (error) {
-    if (isValidationError(error)) {
-      return NextResponse.json(
-        {
-          error: "Validation failed",
-          issues: error.issues,
-          detail: formatValidationIssues(error.issues)
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Reimport failed"
-      },
-      { status: 500 }
-    );
+    return routeErrorResponse(error, "Reimport failed");
   }
 }

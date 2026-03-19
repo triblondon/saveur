@@ -18,6 +18,8 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS recipes (
   id UUID PRIMARY KEY,
   owner_id UUID NULL,
@@ -81,5 +83,6 @@ CREATE TABLE IF NOT EXISTS import_feedback (
 
 CREATE INDEX IF NOT EXISTS recipes_updated_idx ON recipes(updated_at DESC);
 CREATE INDEX IF NOT EXISTS recipes_search_blob_idx ON recipes(search_blob);
+CREATE INDEX IF NOT EXISTS recipes_search_blob_trgm_idx ON recipes USING GIN (search_blob gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS import_runs_created_idx ON import_runs(created_at DESC);
 CREATE INDEX IF NOT EXISTS import_feedback_run_idx ON import_feedback(import_run_id);

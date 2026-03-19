@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { listRecipes } from "@/lib/store";
+import { listRecipeSummaries } from "@/lib/store";
 import styles from "@/app/styles/home.module.css";
 
 interface HomeProps {
@@ -10,7 +10,7 @@ interface HomeProps {
 export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
   const query = params.q?.trim() ?? "";
-  const recipes = await listRecipes(query || undefined);
+  const recipes = await listRecipeSummaries(query || undefined);
 
   return (
     <section className={styles.page}>
