@@ -3,7 +3,6 @@ import { query, withTransaction } from "@/lib/db";
 import { saveSnapshotHtml } from "@/lib/object-storage";
 import {
   buildSearchBlob,
-  collectImportFeedback,
   createImportedRecipeRecord,
   createImportRunRecord,
   createManualRecipeRecord,
@@ -12,7 +11,6 @@ import {
 import type {
   CookStep,
   Ingredient,
-  ImportFeedback,
   ImportRun,
   ImportStatus,
   PrepTask,
@@ -66,6 +64,7 @@ interface ImportRunRow {
   status: ImportStatus;
   usable: boolean;
   confidence_overall: number | string | null;
+  warnings: unknown;
   error_message: string | null;
   created_at: Date | string;
 }
@@ -77,17 +76,6 @@ interface SourceSnapshotRow {
   content_type: string;
   fetched_at: Date | string;
   fetch_status: "OK" | "FAILED";
-}
-
-interface ImportFeedbackRow {
-  id: string;
-  import_run_id: string;
-  recipe_id: string;
-  field_path: string;
-  original_value: unknown;
-  final_value: unknown;
-  feedback_type: "EDIT" | "ADD" | "REMOVE";
-  created_at: Date | string;
 }
 
 function nowIso(): string {
@@ -191,6 +179,7 @@ function toImportRun(row: ImportRunRow): ImportRun {
     status: row.status,
     usable: row.usable,
     confidenceOverall: parseNumber(row.confidence_overall),
+    warnings: asStringArray(row.warnings),
     errorMessage: row.error_message,
     createdAt: asIso(row.created_at)
   };
@@ -204,19 +193,6 @@ function toSnapshot(row: SourceSnapshotRow): SourceSnapshot {
     contentType: row.content_type,
     fetchedAt: asIso(row.fetched_at),
     fetchStatus: row.fetch_status
-  };
-}
-
-function toImportFeedback(row: ImportFeedbackRow): ImportFeedback {
-  return {
-    id: row.id,
-    importRunId: row.import_run_id,
-    recipeId: row.recipe_id,
-    fieldPath: row.field_path,
-    originalValue: row.original_value,
-    finalValue: row.final_value,
-    feedbackType: row.feedback_type,
-    createdAt: asIso(row.created_at)
   };
 }
 
@@ -346,6 +322,12 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
   return row ? toRecipe(row) : null;
 }
 
+export async function getImportRunById(id: string): Promise<ImportRun | null> {
+  const result = await query<ImportRunRow>(`SELECT * FROM import_runs WHERE id = $1 LIMIT 1`, [id]);
+  const row = result.rows[0];
+  return row ? toImportRun(row) : null;
+}
+
 export async function createManualRecipe(input: ManualRecipeInput): Promise<Recipe> {
   const timestamp = nowIso();
   const recipe = createManualRecipeRecord({
@@ -458,10 +440,11 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
           status,
           usable,
           confidence_overall,
+          warnings,
           error_message,
           created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::timestamptz
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13::timestamptz
         )
       `,
       [
@@ -475,6 +458,7 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
         importRun.status,
         importRun.usable,
         importRun.confidenceOverall,
+        JSON.stringify(importRun.warnings),
         importRun.errorMessage,
         importRun.createdAt
       ]
@@ -547,10 +531,11 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
           status,
           usable,
           confidence_overall,
+          warnings,
           error_message,
           created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::timestamptz
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13::timestamptz
         )
       `,
       [
@@ -564,6 +549,7 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
         importRun.status,
         importRun.usable,
         importRun.confidenceOverall,
+        JSON.stringify(importRun.warnings),
         importRun.errorMessage,
         importRun.createdAt
       ]
@@ -576,62 +562,6 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
       importRun
     };
   });
-}
-
-export async function captureImportFeedback(
-  recipeBefore: Recipe,
-  recipeAfter: Recipe
-): Promise<ImportFeedback[]> {
-  const feedbackRows = collectImportFeedback(recipeBefore, recipeAfter, randomUUID, nowIso);
-  if (feedbackRows.length === 0) {
-    return [];
-  }
-
-  await withTransaction(async (tx) => {
-    for (const row of feedbackRows) {
-      await tx(
-        `
-          INSERT INTO import_feedback (
-            id,
-            import_run_id,
-            recipe_id,
-            field_path,
-            original_value,
-            final_value,
-            feedback_type,
-            created_at
-          ) VALUES (
-            $1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8::timestamptz
-          )
-        `,
-        [
-          row.id,
-          row.importRunId,
-          row.recipeId,
-          row.fieldPath,
-          row.originalValue === undefined ? null : JSON.stringify(row.originalValue),
-          row.finalValue === undefined ? null : JSON.stringify(row.finalValue),
-          row.feedbackType,
-          row.createdAt
-        ]
-      );
-    }
-  });
-
-  return feedbackRows;
-}
-
-export async function listImportFeedback(importRunId: string): Promise<ImportFeedback[]> {
-  const result = await query<ImportFeedbackRow>(
-    `
-      SELECT * FROM import_feedback
-      WHERE import_run_id = $1
-      ORDER BY created_at ASC
-    `,
-    [importRunId]
-  );
-
-  return result.rows.map(toImportFeedback);
 }
 
 export async function listImportRuns(): Promise<ImportRun[]> {

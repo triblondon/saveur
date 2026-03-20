@@ -3,14 +3,12 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import {
   buildSearchBlob,
-  collectImportFeedback,
   createImportedRecipeRecord,
   createImportRunRecord,
   createManualRecipeRecord,
   updateRecipeFromDraft
 } from "@/lib/store-shared";
 import type {
-  ImportFeedback,
   ImportRun,
   Recipe,
   RecipeCreateInput,
@@ -27,8 +25,7 @@ const STORE_PATH = path.join(DATA_DIR, "store.json");
 const EMPTY_STORE: StoreData = {
   recipes: [],
   sourceSnapshots: [],
-  importRuns: [],
-  importFeedback: []
+  importRuns: []
 };
 
 let writeQueue = Promise.resolve();
@@ -83,8 +80,12 @@ async function readStore(): Promise<StoreData> {
       }))
     })),
     sourceSnapshots: parsed.sourceSnapshots ?? [],
-    importRuns: parsed.importRuns ?? [],
-    importFeedback: parsed.importFeedback ?? []
+    importRuns: (parsed.importRuns ?? []).map((run) => ({
+      ...run,
+      warnings: Array.isArray(run.warnings)
+        ? run.warnings.filter((warning): warning is string => typeof warning === "string")
+        : []
+    }))
   };
 }
 
@@ -138,6 +139,11 @@ export async function getRecipeById(id: string): Promise<Recipe | null> {
   return data.recipes.find((recipe) => recipe.id === id) ?? null;
 }
 
+export async function getImportRunById(id: string): Promise<ImportRun | null> {
+  const data = await readStore();
+  return data.importRuns.find((run) => run.id === id) ?? null;
+}
+
 export async function createManualRecipe(input: ManualRecipeInput): Promise<Recipe> {
   const data = await readStore();
   const timestamp = nowIso();
@@ -187,7 +193,6 @@ export async function deleteRecipe(id: string): Promise<boolean> {
   }
 
   data.recipes.splice(index, 1);
-  data.importFeedback = data.importFeedback.filter((feedback) => feedback.recipeId !== id);
   await writeStore(data);
 
   return true;
@@ -312,24 +317,4 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
     recipe: next,
     importRun
   };
-}
-
-export async function captureImportFeedback(
-  recipeBefore: Recipe,
-  recipeAfter: Recipe
-): Promise<ImportFeedback[]> {
-  const data = await readStore();
-  const feedbackRows = collectImportFeedback(recipeBefore, recipeAfter, randomUUID, nowIso);
-
-  data.importFeedback.push(...feedbackRows);
-  await writeStore(data);
-
-  return feedbackRows;
-}
-
-export async function listImportFeedback(importRunId: string): Promise<ImportFeedback[]> {
-  const data = await readStore();
-  return data.importFeedback
-    .filter((item) => item.importRunId === importRunId)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }

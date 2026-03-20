@@ -65,6 +65,8 @@
 .recipeCard {
   display: grid;
   gap: var(--space-3);
+  align-content: start;
+  height: 100%;
 }
 
 .heroLink {
@@ -82,6 +84,12 @@
 .recipeTitle {
   margin: 0;
   font-size: 1.2rem;
+  line-height: 1.2;
+  min-height: 2.4em;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .recipeTitleLink {
@@ -97,17 +105,19 @@
   font-size: var(--font-size-sm);
 }
 
+.tagList {
+  align-content: flex-start;
+  min-height: 56px;
+}
+
 @media (min-width: 960px) {
   .recipeList {
-    display: block;
-    column-count: 2;
-    column-gap: var(--space-3);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
 
-  .recipeCard {
-    width: 100%;
-    display: inline-grid;
-    margin: 0 0 var(--space-3);
-    break-inside: avoid;
+@media (min-width: 1560px) {
+  .recipeList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

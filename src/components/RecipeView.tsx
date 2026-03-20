@@ -1,8 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { scaleValue } from "@/lib/scaling";
+import {
+  clearShoppingChecklist,
+  loadShoppingChecklist,
+  saveShoppingChecklist
+} from "@/lib/shopping-checklist";
 import { RecipeHeaderCard } from "@/components/recipe-view/RecipeHeaderCard";
 import { IngredientsCard } from "@/components/recipe-view/IngredientsCard";
 import { PrepTasksCard } from "@/components/recipe-view/PrepTasksCard";
@@ -19,15 +24,22 @@ const CREATED_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
 
 interface RecipeViewProps {
   recipe: Recipe;
+  latestImportWarnings: string[];
 }
 
-export function RecipeView({ recipe }: RecipeViewProps) {
+export function RecipeView({ recipe, latestImportWarnings }: RecipeViewProps) {
   const [servings, setServings] = useState<number>(recipe.servingCount ?? 2);
+  const [checkedIngredientKeys, setCheckedIngredientKeys] = useState<string[]>([]);
+  const ingredientCheckKeys = useMemo(
+    () => recipe.ingredients.map((ingredient, index) => `${index}:${ingredient.name.trim().toLowerCase()}`),
+    [recipe.ingredients]
+  );
 
   const ingredientsWithQuantity = useMemo(
     () =>
-      recipe.ingredients.map((ingredient) => ({
+      recipe.ingredients.map((ingredient, index) => ({
         ingredient,
+        checkKey: ingredientCheckKeys[index],
         quantity: (() => {
           if (
             ingredient.quantityValue !== null &&
@@ -51,8 +63,46 @@ export function RecipeView({ recipe }: RecipeViewProps) {
           return "—";
         })()
       })),
-    [recipe.ingredients, recipe.servingCount, servings]
+    [ingredientCheckKeys, recipe.ingredients, recipe.servingCount, servings]
   );
+
+  const checkableIngredientKeys = useMemo(
+    () =>
+      ingredientsWithQuantity
+        .filter(({ ingredient }) => !ingredient.isPantryItem)
+        .map(({ checkKey }) => checkKey),
+    [ingredientsWithQuantity]
+  );
+
+  useEffect(() => {
+    const validKeys = new Set(checkableIngredientKeys);
+    const loaded = loadShoppingChecklist(recipe.id).filter((checkKey) => validKeys.has(checkKey));
+    setCheckedIngredientKeys(loaded);
+  }, [checkableIngredientKeys, recipe.id]);
+
+  const checkedIngredientSet = useMemo(() => new Set(checkedIngredientKeys), [checkedIngredientKeys]);
+
+  const hasCheckedIngredients = checkedIngredientKeys.length > 0;
+
+  function onToggleIngredient(checkKey: string, checked: boolean) {
+    setCheckedIngredientKeys((previous) => {
+      const next = new Set(previous);
+      if (checked) {
+        next.add(checkKey);
+      } else {
+        next.delete(checkKey);
+      }
+
+      const serialized = Array.from(next);
+      saveShoppingChecklist(recipe.id, serialized);
+      return serialized;
+    });
+  }
+
+  function onClearShoppingChecks() {
+    setCheckedIngredientKeys([]);
+    clearShoppingChecklist(recipe.id);
+  }
 
   const mainIngredients = useMemo(
     () => ingredientsWithQuantity.filter(({ ingredient }) => !ingredient.isPantryItem),
@@ -123,6 +173,10 @@ export function RecipeView({ recipe }: RecipeViewProps) {
         servings={servings}
         servingsOptions={servingsOptions}
         onServingsChange={setServings}
+        checkedIngredientKeys={checkedIngredientSet}
+        onToggleIngredient={onToggleIngredient}
+        showShoppingNote={hasCheckedIngredients}
+        onClearShoppingChecks={onClearShoppingChecks}
       />
 
       <PrepTasksCard prepTasks={recipe.prepTasks} />
@@ -135,6 +189,7 @@ export function RecipeView({ recipe }: RecipeViewProps) {
           sourceType: recipe.sourceType,
           importPrompt: recipe.importPrompt
         }}
+        latestImportWarnings={latestImportWarnings}
       />
     </section>
   );

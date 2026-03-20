@@ -12,12 +12,6 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-  CREATE TYPE feedback_type AS ENUM ('EDIT', 'ADD', 'REMOVE');
-EXCEPTION
-  WHEN duplicate_object THEN NULL;
-END $$;
-
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE IF NOT EXISTS recipes (
@@ -66,23 +60,16 @@ CREATE TABLE IF NOT EXISTS import_runs (
   status import_status NOT NULL,
   usable BOOLEAN NOT NULL,
   confidence_overall NUMERIC NULL,
+  warnings JSONB NOT NULL DEFAULT '[]'::jsonb,
   error_message TEXT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT import_runs_warnings_array CHECK (jsonb_typeof(warnings) = 'array')
 );
 
-CREATE TABLE IF NOT EXISTS import_feedback (
-  id UUID PRIMARY KEY,
-  import_run_id UUID NOT NULL REFERENCES import_runs(id) ON DELETE CASCADE,
-  recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-  field_path TEXT NOT NULL,
-  original_value JSONB NULL,
-  final_value JSONB NULL,
-  feedback_type feedback_type NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+ALTER TABLE import_runs
+  ADD COLUMN IF NOT EXISTS warnings JSONB NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS recipes_updated_idx ON recipes(updated_at DESC);
 CREATE INDEX IF NOT EXISTS recipes_search_blob_idx ON recipes(search_blob);
 CREATE INDEX IF NOT EXISTS recipes_search_blob_trgm_idx ON recipes USING GIN (search_blob gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS import_runs_created_idx ON import_runs(created_at DESC);
-CREATE INDEX IF NOT EXISTS import_feedback_run_idx ON import_feedback(import_run_id);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { captureImportFeedback, deleteRecipe, getRecipeById, updateRecipe } from "@/lib/store";
+import { deleteRecipe, getRecipeById, updateRecipe } from "@/lib/store";
 import { normalizeRecipeUpdateInput } from "@/lib/recipe-domain";
 import { parseRecipeUpdateInput } from "@/lib/validation";
 import { routeErrorResponse } from "@/lib/api/route-helpers";
@@ -17,8 +17,8 @@ export async function GET(_: Request, context: { params: Promise<{ id: string }>
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
-  const recipeBefore = await getRecipeById(params.id);
-  if (!recipeBefore) {
+  const existingRecipe = await getRecipeById(params.id);
+  if (!existingRecipe) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -30,9 +30,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const feedback = await captureImportFeedback(recipeBefore, recipeAfter);
-
-    return NextResponse.json({ recipe: recipeAfter, feedbackCount: feedback.length });
+    return NextResponse.json({ recipe: recipeAfter });
   } catch (error) {
     return routeErrorResponse(error, "Unable to update recipe");
   }

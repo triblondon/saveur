@@ -2,7 +2,6 @@ import { isDatabaseConfigured } from "@/lib/db";
 import * as fileStore from "@/lib/store-file";
 import * as postgresStore from "@/lib/store-postgres";
 import type {
-  ImportFeedback,
   ImportRun,
   Recipe,
   RecipeSummary,
@@ -14,6 +13,7 @@ interface StoreBackend {
   listRecipeSummaries: (query?: string) => Promise<RecipeSummary[]>;
   listRecipes: (query?: string) => Promise<Recipe[]>;
   getRecipeById: (id: string) => Promise<Recipe | null>;
+  getImportRunById: (id: string) => Promise<ImportRun | null>;
   createManualRecipe: (input: ManualRecipeInput) => Promise<Recipe>;
   updateRecipe: (id: string, updates: Partial<Omit<Recipe, "id" | "createdAt">>) => Promise<Recipe | null>;
   deleteRecipe: (id: string) => Promise<boolean>;
@@ -35,8 +35,6 @@ interface StoreBackend {
     draft: ParsedRecipeDraft;
     importPrompt?: string | null;
   }) => Promise<{ recipe: Recipe; importRun: ImportRun } | null>;
-  captureImportFeedback: (recipeBefore: Recipe, recipeAfter: Recipe) => Promise<ImportFeedback[]>;
-  listImportFeedback: (importRunId: string) => Promise<ImportFeedback[]>;
 }
 
 export type ManualRecipeInput = fileStore.ManualRecipeInput;
@@ -53,6 +51,10 @@ export async function listRecipeSummaries(query?: string): Promise<RecipeSummary
 
 export async function getRecipeById(id: string): Promise<Recipe | null> {
   return backend.getRecipeById(id);
+}
+
+export async function getImportRunById(id: string): Promise<ImportRun | null> {
+  return backend.getImportRunById(id);
 }
 
 export async function createManualRecipe(input: ManualRecipeInput): Promise<Recipe> {
@@ -95,12 +97,4 @@ export async function reimportRecipe(input: {
   importPrompt?: string | null;
 }): Promise<{ recipe: Recipe; importRun: ImportRun } | null> {
   return backend.reimportRecipe(input);
-}
-
-export async function captureImportFeedback(recipeBefore: Recipe, recipeAfter: Recipe): Promise<ImportFeedback[]> {
-  return backend.captureImportFeedback(recipeBefore, recipeAfter);
-}
-
-export async function listImportFeedback(importRunId: string): Promise<ImportFeedback[]> {
-  return backend.listImportFeedback(importRunId);
 }

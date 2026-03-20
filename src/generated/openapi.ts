@@ -79,25 +79,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import/{importRunId}/feedback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                importRunId: components["parameters"]["ImportRunIdParam"];
-            };
-            cookie?: never;
-        };
-        /** List feedback rows for an import run */
-        get: operations["listImportFeedback"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/recipes/{id}/photo": {
         parameters: {
             query?: never;
@@ -127,8 +108,6 @@ export interface components {
         Unit: "UNIT" | "ML" | "GRAM" | "KG" | "TSP" | "TBSP" | "PINCH" | "HANDFUL" | "UNKNOWN";
         /** @enum {string} */
         ImportStatus: "SUCCESS" | "PARTIAL" | "FAILED";
-        /** @enum {string} */
-        FeedbackType: "EDIT" | "ADD" | "REMOVE";
         /** @description A single ingredient with normalized fields.  Quantity fields should be filled where possible, but quantityText should always be filled to preserve the original text and any nuances that can't be captured in structured fields. */
         IngredientData: {
             /**
@@ -308,20 +287,6 @@ export interface components {
             /** @description Non-fatal caveats discovered while extracting data. */
             warnings: string[];
         };
-        ImportFeedback: {
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            importRunId: string;
-            /** Format: uuid */
-            recipeId: string;
-            fieldPath: string;
-            originalValue: unknown;
-            finalValue: unknown;
-            feedbackType: components["schemas"]["FeedbackType"];
-            /** Format: date-time */
-            createdAt: string;
-        };
         ImportUrlRequest: {
             url: string;
             prompt?: string | null;
@@ -345,15 +310,8 @@ export interface components {
         RecipeResponse: {
             recipe: components["schemas"]["Recipe"];
         };
-        RecipeWithFeedbackResponse: {
-            recipe: components["schemas"]["Recipe"];
-            feedbackCount: number;
-        };
         DeleteRecipeResponse: {
             deleted: boolean;
-        };
-        ImportFeedbackListResponse: {
-            feedback: components["schemas"]["ImportFeedback"][];
         };
         ValidationIssue: {
             instancePath?: string;
@@ -372,7 +330,6 @@ export interface components {
     responses: never;
     parameters: {
         RecipeIdParam: string;
-        ImportRunIdParam: string;
     };
     requestBodies: never;
     headers: never;
@@ -497,7 +454,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RecipeWithFeedbackResponse"];
+                    "application/json": components["schemas"]["RecipeResponse"];
                 };
             };
             /** @description Validation failed */
@@ -669,28 +626,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
-    listImportFeedback: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                importRunId: components["parameters"]["ImportRunIdParam"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Feedback list */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ImportFeedbackListResponse"];
                 };
             };
         };

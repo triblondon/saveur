@@ -1,64 +1,65 @@
 # Saveur
 
-Saveur is a mobile-first recipe app for importing and cooking recipes without ad-heavy pages.
+Saveur is a mobile-first recipe app for importing recipes from web pages and cooking from a clean, distraction-free view.
 
-This repository currently includes:
-- A Next.js + TypeScript scaffold
-- A single LLM-driven URL import pipeline for all recipe sources
-- URL import API with raw HTML snapshot storage
-- Basic manual recipe creation, list/search, and recipe cook view
-- Wake lock support and concurrent per-step timers
-- Import feedback capture when imported recipes are edited
+## Highlights
 
-## Import technique
+- Next.js + TypeScript app (App Router)
+- LLM-driven URL import pipeline for all sources
+- Structured import output validated with OpenAPI-derived JSON Schema
+- Manual create/edit and full recipe CRUD
+- Hero photo upload + display
+- Ingredients, prep tasks, and cook steps
+- Concurrent cook-step timers + wake lock support
+- QR code scanning in URL import view
+- Per-recipe shopping checklist persisted on device (auto-clears after a week)
 
-`POST /api/import/url` now performs one OpenAI Responses API call that:
-1. Reviews the recipe URL (with web search tool enabled)
-2. Uses extracted HTML text as additional context
-3. Returns strict JSON schema output for:
-   - metadata
-   - ingredients
-   - prep tasks
-   - cooking steps
+## Import approach
 
-The output schema includes descriptions, examples, length constraints, and enum constraints.
-Unit enum values are sourced from app type defs (`UNIT_OPTIONS` in `src/lib/types.ts`) so schema and app model stay in sync.
+`POST /api/import/url` performs one OpenAI Responses API call that:
+1. Reviews the source URL content (including mirror markdown + HTML snippet context)
+2. Produces strict JSON output matching `RecipeFromLlmImport`
+3. Returns recipe metadata, ingredients, prep tasks, cook steps, confidence, and warnings
 
-## Project layout
+The import schema is sourced from `openapi/openapi.yaml` and resolved at runtime.
 
-- `src/lib/import/llm-import.ts`: single LLM import invocation + JSON schema
-- `src/lib/import/index.ts`: URL import orchestration
-- `src/lib/store.ts`: persistence facade (Neon Postgres when `DATABASE_URL` is set, file fallback otherwise)
-- `src/app/api/*`: API routes
-- `src/app/*`: basic UI routes
-- `db/schema.sql`: Neon Postgres schema
+## Data + storage
 
-## Run locally
+- Postgres is used when `DATABASE_URL` is set.
+- File persistence fallback is used otherwise (`data/store.json`).
+- Recipe content (ingredients/prep/cook) is stored as JSONB arrays on `recipes`.
+- Import runs are stored in `import_runs` including warnings.
+- Source snapshots + hero photos are stored via object storage integration.
 
-1. Install dependencies:
+## Local development
+
+1. Install dependencies
    - `npm install`
-2. Set env vars:
+2. Configure env
    - `OPENAI_API_KEY=...`
-   - optional `OPENAI_IMPORT_MODEL=...` (defaults to `gpt-4.1`)
-3. Start dev server:
+   - optional `OPENAI_IMPORT_MODEL=...` (default: `gpt-4.1`)
+   - optional `DATABASE_URL=...` (for Postgres mode)
+   - optional `BLOB_READ_WRITE_TOKEN=...` (for blob uploads)
+3. Run migrations when using Postgres
+   - `npm run db:migrate`
+4. Start app
    - `npm run dev`
-4. Open [http://localhost:3000](http://localhost:3000)
 
-## Notes
+Open [http://localhost:3000](http://localhost:3000).
 
-- If `DATABASE_URL` is not set, local file persistence is used (`data/store.json`) for fast iteration.
-- If `DATABASE_URL` is set, recipes/import runs/feedback/snapshots are persisted in Postgres.
-- Source snapshots and recipe photo uploads use Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set.
+## Scripts
 
-## Vercel + Neon + Vercel Blob setup
+- `npm run dev` - start dev server
+- `npm run build` - production build
+- `npm run start` - production server
+- `npm run typecheck` - TypeScript checks
+- `npm run test` - smoke tests
+- `npm run generate:types` - regenerate OpenAPI TypeScript types
+- `npm run db:migrate` - apply SQL schema to configured Postgres
 
-1. Neon
-   - Create a Neon project and copy the pooled connection string into `DATABASE_URL`.
-   - Run schema migration: `npm run db:migrate`
-2. Vercel Blob
-   - Create a Blob store in Vercel.
-   - Set `BLOB_READ_WRITE_TOKEN` in the project environment variables.
-3. Vercel
-   - Import the repo.
-   - Add environment variables from `.env.example`.
-   - Deploy and run `npm run db:migrate` against production DB before first import.
+## Deployment (Vercel + Neon + Vercel Blob)
+
+1. Provision Neon and set `DATABASE_URL`.
+2. Provision Vercel Blob and set `BLOB_READ_WRITE_TOKEN`.
+3. Deploy on Vercel with environment variables from `.env.example`.
+4. Run `npm run db:migrate` against production DB before first imports.

@@ -8,9 +8,10 @@ import styles from "@/components/styles/recipe-view.module.css";
 
 interface RecipeActionsCardProps {
   recipe: Pick<Recipe, "id" | "sourceType" | "importPrompt">;
+  latestImportWarnings: string[];
 }
 
-export function RecipeActionsCard({ recipe }: RecipeActionsCardProps) {
+export function RecipeActionsCard({ recipe, latestImportWarnings }: RecipeActionsCardProps) {
   const router = useRouter();
   const [reimporting, setReimporting] = useState(false);
   const [reimportError, setReimportError] = useState<string | null>(null);
@@ -65,6 +66,16 @@ export function RecipeActionsCard({ recipe }: RecipeActionsCardProps) {
       </div>
       {recipe.sourceType === "URL" && showReimportPrompt ? (
         <div className={`card ${styles.reimportPromptCard}`}>
+          {latestImportWarnings.length > 0 ? (
+            <div className={styles.importWarnings}>
+              <p className={styles.importWarningsTitle}>Last import warnings</p>
+              <ul className={styles.importWarningsList}>
+                {latestImportWarnings.map((warning, index) => (
+                  <li key={`${warning}-${index}`}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <label htmlFor="reimportPrompt">Reimport prompt (optional)</label>
           <textarea
             id="reimportPrompt"
@@ -95,4 +106,3 @@ export function RecipeActionsCard({ recipe }: RecipeActionsCardProps) {
     </article>
   );
 }
-

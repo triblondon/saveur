@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { RecipeView } from "@/components/RecipeView";
-import { getRecipeById } from "@/lib/store";
+import { getImportRunById, getRecipeById } from "@/lib/store";
 
 interface RecipePageProps {
   params: Promise<{ id: string }>;
@@ -14,5 +14,9 @@ export default async function RecipePage({ params }: RecipePageProps) {
     notFound();
   }
 
-  return <RecipeView recipe={recipe} />;
+  const latestImportWarnings = recipe.importRunId
+    ? (await getImportRunById(recipe.importRunId))?.warnings ?? []
+    : [];
+
+  return <RecipeView recipe={recipe} latestImportWarnings={latestImportWarnings} />;
 }

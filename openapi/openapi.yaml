@@ -83,7 +83,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/RecipeWithFeedbackResponse"
+                $ref: "#/components/schemas/RecipeResponse"
         "400":
           description: Validation failed
           content:
@@ -198,19 +198,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /api/import/{importRunId}/feedback:
-    parameters:
-      - $ref: "#/components/parameters/ImportRunIdParam"
-    get:
-      operationId: listImportFeedback
-      summary: List feedback rows for an import run
-      responses:
-        "200":
-          description: Feedback list
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ImportFeedbackListResponse"
   /api/recipes/{id}/photo:
     parameters:
       - $ref: "#/components/parameters/RecipeIdParam"
@@ -286,12 +273,6 @@ components:
         - SUCCESS
         - PARTIAL
         - FAILED
-    FeedbackType:
-      type: string
-      enum:
-        - EDIT
-        - ADD
-        - REMOVE
     IngredientData:
       type: object
       description: A single ingredient with normalized fields.  Quantity fields should be filled where possible, but quantityText should always be filled to preserve the original text and any nuances that can't be captured in structured fields.
@@ -402,7 +383,7 @@ components:
         detail:
           type: [ string, "null" ]
           maxLength: 1200
-          description: Detailed instructions for the prep task. Include all processing details and ingredient names.  Supports markdown.  Put raw ingredient names in **bold**.
+          description: Detailed instructions for the prep task. Include all processing details and ingredient names.  Supports markdown.  Put raw ingredient names in **bold** but don't bold names of pantry items like salt, pepper, oil or water.
           examples:
             - Combine the **curry powder** and **turmeric** in a small bowl
     CookStepData:
@@ -430,7 +411,7 @@ components:
         detail:
           type: [ string, "null" ]
           maxLength: 1400
-          description: Detailed cooking instructions, including sequencing and timing details.  Include all relevant ingredient names.  Supports markdown.  Put ingredient names (both raw and prepared) in **bold** (don't bold names of pantry items)
+          description: Detailed cooking instructions, including sequencing and timing details.  Include all relevant ingredient names.  Supports markdown.  Put ingredient names (both raw and prepared) in **bold** but don't bold names of pantry items like salt, pepper, oil or water.
           examples:
             - Add the **diced tomato** with a pinch of salt and sugar and cook for 3-4 min or until the tomatoes have broken down
         sourceIngredients:
@@ -653,37 +634,6 @@ components:
                 examples:
                   - Could not determine a hero image URL
               description: Non-fatal caveats discovered while extracting data.
-    ImportFeedback:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - importRunId
-        - recipeId
-        - fieldPath
-        - originalValue
-        - finalValue
-        - feedbackType
-        - createdAt
-      properties:
-        id:
-          type: string
-          format: uuid
-        importRunId:
-          type: string
-          format: uuid
-        recipeId:
-          type: string
-          format: uuid
-        fieldPath:
-          type: string
-        originalValue: {}
-        finalValue: {}
-        feedbackType:
-          $ref: "#/components/schemas/FeedbackType"
-        createdAt:
-          type: string
-          format: date-time
     ImportUrlRequest:
       type: object
       additionalProperties: false
@@ -751,18 +701,6 @@ components:
       properties:
         recipe:
           $ref: "#/components/schemas/Recipe"
-    RecipeWithFeedbackResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - recipe
-        - feedbackCount
-      properties:
-        recipe:
-          $ref: "#/components/schemas/Recipe"
-        feedbackCount:
-          type: integer
-          minimum: 0
     DeleteRecipeResponse:
       type: object
       additionalProperties: false
@@ -771,16 +709,6 @@ components:
       properties:
         deleted:
           type: boolean
-    ImportFeedbackListResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - feedback
-      properties:
-        feedback:
-          type: array
-          items:
-            $ref: "#/components/schemas/ImportFeedback"
     ValidationIssue:
       type: object
       additionalProperties: true
@@ -806,13 +734,6 @@ components:
   parameters:
     RecipeIdParam:
       name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    ImportRunIdParam:
-      name: importRunId
       in: path
       required: true
       schema:

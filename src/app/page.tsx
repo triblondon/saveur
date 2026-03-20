@@ -67,7 +67,7 @@ export default async function Home({ searchParams }: HomeProps) {
                 {recipe.sourceType}
               </p>
               {recipe.tags.length > 0 ? (
-                <ul className="inline-list">
+                <ul className={`inline-list ${styles.tagList}`}>
                   {recipe.tags.map((tag) => (
                     <li className="tag" key={tag}>
                       {tag}

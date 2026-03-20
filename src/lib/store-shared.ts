@@ -8,7 +8,7 @@ import {
   normalizeTags
 } from "@/lib/recipe-domain";
 import type { ParsedRecipeDraft } from "@/lib/import/types";
-import type { ImportFeedback, ImportRun, Recipe, RecipeCreateInput } from "@/lib/types";
+import type { ImportRun, Recipe, RecipeCreateInput } from "@/lib/types";
 
 function normalizeSearch(value: string): string {
   return value.toLowerCase().trim();
@@ -77,6 +77,7 @@ export function createImportRunRecord(params: {
     status: status.status,
     usable: status.usable,
     confidenceOverall: draft.confidence.overall,
+    warnings: draft.warnings,
     errorMessage: status.errorMessage,
     createdAt: params.createdAt
   };
@@ -144,53 +145,3 @@ export function updateRecipeFromDraft(
     updatedAt: params.updatedAt
   };
 }
-
-function jsonEqual(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-export function collectImportFeedback(
-  recipeBefore: Recipe,
-  recipeAfter: Recipe,
-  createId: () => string,
-  nowIso: () => string
-): ImportFeedback[] {
-  if (!recipeBefore.importRunId || recipeBefore.importRunId !== recipeAfter.importRunId) {
-    return [];
-  }
-
-  const feedbackRows: ImportFeedback[] = [];
-  const fieldPaths: Array<keyof Recipe> = [
-    "title",
-    "description",
-    "timeRequiredMinutes",
-    "servingCount",
-    "ingredients",
-    "prepTasks",
-    "cookSteps",
-    "tags"
-  ];
-
-  for (const fieldPath of fieldPaths) {
-    const beforeValue = recipeBefore[fieldPath];
-    const afterValue = recipeAfter[fieldPath];
-
-    if (jsonEqual(beforeValue, afterValue)) {
-      continue;
-    }
-
-    feedbackRows.push({
-      id: createId(),
-      importRunId: recipeBefore.importRunId,
-      recipeId: recipeBefore.id,
-      fieldPath,
-      originalValue: beforeValue,
-      finalValue: afterValue,
-      feedbackType: "EDIT",
-      createdAt: nowIso()
-    });
-  }
-
-  return feedbackRows;
-}
-

@@ -134,10 +134,12 @@ function extractJsonObject(text: string): unknown {
 }
 
 function normalizeOutput(output: ImportDraft): ParsedRecipeDraft {
+  const photoUrl =
+    output.heroPhotoUrl?.replace(/(https:\/\/.*?.gousto.co.uk\/.*?)\-x\d+(\.jpg)/, "$1-x1000$2") || null;
   const parsed: ParsedRecipeDraft = {
     title: output.title.trim(),
     description: output.description ? output.description.trim() : null,
-    heroPhotoUrl: output.heroPhotoUrl,
+    heroPhotoUrl: photoUrl,
     servingCount: output.servingCount,
     timeRequiredMinutes: output.timeRequiredMinutes,
     tags: output.tags,
@@ -283,10 +285,11 @@ export async function extractRecipeDraftWithLlm(
     "Rewrite this recipe, identifying key metadata and organising the main content as:",
     "",
     "1. Ingredients: Identify all listed ingredients, quantities, and units. Convert to one allowed unit enum value when possible. Mark pantry staples with isPantryItem=true.",
-    "2. Prep tasks: A list of tasks that can be done to process/combine raw ingredients into as few as possible prepared ingredients. Prep tasks must avoid sequencing, timing, or heat-sensitive cooking. Making salads, chopping veg, making stocks or spice mixes, or combining ingredients that are ultimately added together in the same cook step are good candidates for prep tasks.",
+    "2. Prep tasks: A list of tasks that can be done to process/combine raw ingredients into as few as possible prepared ingredients. Prep tasks must avoid sequencing, timing, or heat-sensitive cooking. Making salads, chopping veg, making stocks or spice mixes, or combining ingredients that are ultimately added together in the same cook step are good candidates for prep tasks.  At the end of the prep tasks the chef should have a set of bowls of of prepped ingredients ready to be added in the cooking steps.  Anything that is added to the pot or pan at the same time in the cooking steps should be prepped together in the same prep task when possible.  A mini chopper machine is often used if ingredients like shallots, garlic, ginger or herbs need to be chopped and added together in the same cook step.",
     "3. Cooking steps: Ordered heat/time-sensitive steps that can't be done ahead of time, using ingredients prepped in the prep tasks.",
     "",
     "Use the source URL and extracted page content below. If the HTML is JS-heavy and sparse, use web search to read the page.",
+    "",
     "",
     `SOURCE_URL:\n${params.url}`,
     "",

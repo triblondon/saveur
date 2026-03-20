@@ -3,7 +3,6 @@ import type { components } from "@/generated/openapi";
 export type SourceType = components["schemas"]["SourceType"];
 export type Unit = components["schemas"]["Unit"];
 export type ImportStatus = components["schemas"]["ImportStatus"];
-export type FeedbackType = components["schemas"]["FeedbackType"];
 
 export type IngredientData = components["schemas"]["IngredientData"];
 export type Ingredient = IngredientData;
@@ -29,7 +28,6 @@ export type RecipeSummary = Pick<
   "id" | "title" | "heroPhotoUrl" | "timeRequiredMinutes" | "servingCount" | "sourceType" | "tags" | "updatedAt"
 >;
 
-export type ImportFeedback = components["schemas"]["ImportFeedback"];
 export type ImportUrlRequest = components["schemas"]["ImportUrlRequest"];
 export type ReimportRecipeRequest = components["schemas"]["ReimportRecipeRequest"];
 
@@ -57,6 +55,7 @@ export interface ImportRun {
   status: ImportStatus;
   usable: boolean;
   confidenceOverall: number | null;
+  warnings: string[];
   errorMessage: string | null;
   createdAt: string;
 }
@@ -65,7 +64,6 @@ export interface StoreData {
   recipes: Recipe[];
   sourceSnapshots: SourceSnapshot[];
   importRuns: ImportRun[];
-  importFeedback: ImportFeedback[];
 }
 
 export const SOURCE_TYPE_OPTIONS = ["MANUAL", "URL", "SCAN"] as const satisfies readonly SourceType[];

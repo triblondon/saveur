@@ -3,6 +3,7 @@ import styles from "@/components/styles/recipe-view.module.css";
 
 interface IngredientRow {
   ingredient: Ingredient;
+  checkKey: string;
   quantity: string;
 }
 
@@ -12,10 +13,24 @@ interface IngredientsCardProps {
   servings: number;
   servingsOptions: number[];
   onServingsChange: (next: number) => void;
+  checkedIngredientKeys: Set<string>;
+  onToggleIngredient: (checkKey: string, checked: boolean) => void;
+  showShoppingNote: boolean;
+  onClearShoppingChecks: () => void;
 }
 
 export function IngredientsCard(props: IngredientsCardProps) {
-  const { mainIngredients, pantryIngredients, servings, servingsOptions, onServingsChange } = props;
+  const {
+    mainIngredients,
+    pantryIngredients,
+    servings,
+    servingsOptions,
+    onServingsChange,
+    checkedIngredientKeys,
+    onToggleIngredient,
+    showShoppingNote,
+    onClearShoppingChecks
+  } = props;
 
   return (
     <article className="card">
@@ -35,9 +50,19 @@ export function IngredientsCard(props: IngredientsCardProps) {
       {mainIngredients.length > 0 ? (
         <table className={styles.ingredientsTable}>
           <tbody>
-            {mainIngredients.map(({ ingredient, quantity }) => (
-              <tr key={`${ingredient.name}-${quantity}`}>
-                <td className={styles.ingredientNameCell}>{ingredient.name}</td>
+            {mainIngredients.map(({ ingredient, checkKey, quantity }) => (
+              <tr key={checkKey}>
+                <td className={styles.ingredientNameCell}>
+                  <label className={styles.ingredientToggleLabel}>
+                    <input
+                      type="checkbox"
+                      className={styles.ingredientCheckbox}
+                      checked={checkedIngredientKeys.has(checkKey)}
+                      onChange={(event) => onToggleIngredient(checkKey, event.target.checked)}
+                    />
+                    <span>{ingredient.name}</span>
+                  </label>
+                </td>
                 <td className={styles.ingredientQtyCell}>{quantity}</td>
               </tr>
             ))}
@@ -47,7 +72,16 @@ export function IngredientsCard(props: IngredientsCardProps) {
       {mainIngredients.length === 0 ? <p className="muted">All ingredients are pantry items.</p> : null}
       {pantryIngredients.length > 0 ? (
         <p className={`muted ${styles.pantryLine}`}>
-          Also: {pantryIngredients.map(({ ingredient }) => ingredient.name).join(", ")}
+          You also need: {pantryIngredients.map(({ ingredient }) => ingredient.name).join(", ")}
+        </p>
+      ) : null}
+      {showShoppingNote ? (
+        <p className={`muted ${styles.shoppingNotice}`}>
+          Shopping checkmarks are cleared after a week. [
+          <button type="button" className={styles.inlineLink} onClick={onClearShoppingChecks}>
+            Clear now
+          </button>
+          ]
         </p>
       ) : null}
     </article>
