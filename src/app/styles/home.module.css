@@ -71,6 +71,7 @@
 
 .heroLink {
   display: block;
+  position: relative;
 }
 
 .heroImage {
@@ -79,6 +80,19 @@
   object-fit: cover;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
+}
+
+.durationBadge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(22, 18, 13, 0.82);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  line-height: 1.2;
+  font-weight: 600;
 }
 
 .recipeTitle {
@@ -103,11 +117,6 @@
 
 .meta {
   font-size: var(--font-size-sm);
-}
-
-.tagList {
-  align-content: flex-start;
-  min-height: 56px;
 }
 
 @media (min-width: 960px) {

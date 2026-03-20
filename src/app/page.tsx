@@ -52,6 +52,9 @@ export default async function Home({ searchParams }: HomeProps) {
                     width={1200}
                     height={680}
                   />
+                  <span className={styles.durationBadge}>
+                    {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
+                  </span>
                 </Link>
               ) : null}
               <h2 className={styles.recipeTitle}>
@@ -59,21 +62,10 @@ export default async function Home({ searchParams }: HomeProps) {
                   {recipe.title}
                 </Link>
               </h2>
-              <p className={`muted ${styles.meta}`}>
-                {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
-                {" | "}
-                {recipe.servingCount ? `${recipe.servingCount} servings` : "Servings unknown"}
-                {" | "}
-                {recipe.sourceType}
-              </p>
-              {recipe.tags.length > 0 ? (
-                <ul className={`inline-list ${styles.tagList}`}>
-                  {recipe.tags.map((tag) => (
-                    <li className="tag" key={tag}>
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
+              {!recipe.heroPhotoUrl ? (
+                <p className={`muted ${styles.meta}`}>
+                  {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
+                </p>
               ) : null}
             </article>
           ))}
