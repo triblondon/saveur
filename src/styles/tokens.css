@@ -1,29 +1,29 @@
 :root {
   color-scheme: light;
 
-  --bg: #f7f7f8;
-  --bg-elevated: #ffffff;
-  --surface: #ffffff;
-  --surface-muted: #f2f4f7;
-  --surface-strong: #ebeff4;
+  --bg: #f8f3e7;
+  --bg-elevated: #fffaf0;
+  --surface: #fffefb;
+  --surface-muted: #f2ebdc;
+  --surface-strong: #e9decb;
 
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-tertiary: #6b7280;
+  --text-primary: #1f1a13;
+  --text-secondary: #5f5447;
+  --text-tertiary: #817463;
 
-  --border-subtle: #e5e7eb;
-  --border-strong: #d1d5db;
-  --ring: rgba(16, 163, 127, 0.28);
+  --border-subtle: #e6d8bf;
+  --border-strong: #d5c19a;
+  --ring: rgba(165, 126, 37, 0.24);
 
-  --accent: #10a37f;
-  --accent-strong: #0d8a6d;
-  --accent-soft: #e6f7f3;
+  --accent: #b3822f;
+  --accent-strong: #8f6420;
+  --accent-soft: #f6ecd7;
 
   --danger: #b42318;
   --danger-soft: #fef3f2;
 
-  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.06);
-  --shadow-md: 0 8px 30px rgba(17, 24, 39, 0.08);
+  --shadow-sm: 0 1px 2px rgba(69, 45, 9, 0.08);
+  --shadow-md: 0 10px 34px rgba(69, 45, 9, 0.1);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -40,6 +40,7 @@
   --space-8: 32px;
 
   --font-sans: "Soehne", "Söhne", "SF Pro Text", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-heading: "Oswald", "Arial Narrow", "Segoe UI", sans-serif;
 
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;

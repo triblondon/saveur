@@ -9,12 +9,29 @@ interface IngredientRow {
 interface IngredientsCardProps {
   mainIngredients: IngredientRow[];
   pantryIngredients: IngredientRow[];
+  servings: number;
+  servingsOptions: number[];
+  onServingsChange: (next: number) => void;
 }
 
-export function IngredientsCard({ mainIngredients, pantryIngredients }: IngredientsCardProps) {
+export function IngredientsCard(props: IngredientsCardProps) {
+  const { mainIngredients, pantryIngredients, servings, servingsOptions, onServingsChange } = props;
+
   return (
     <article className="card">
-      <h3 className={styles.ingredientsTitle}>Ingredients</h3>
+      <div className={styles.ingredientsHeader}>
+        <h3 className={styles.ingredientsTitle}>Ingredients</h3>
+        <label className={styles.ingredientsServingsControl}>
+          <span className={`muted ${styles.ingredientsServingsLabel}`}>Servings</span>
+          <select value={String(servings)} onChange={(event) => onServingsChange(Number(event.target.value))}>
+            {servingsOptions.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {mainIngredients.length > 0 ? (
         <table className={styles.ingredientsTable}>
           <tbody>
@@ -36,4 +53,3 @@ export function IngredientsCard({ mainIngredients, pantryIngredients }: Ingredie
     </article>
   );
 }
-

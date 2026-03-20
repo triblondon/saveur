@@ -4,18 +4,15 @@ import styles from "@/components/styles/recipe-view.module.css";
 
 interface RecipeHeaderCardProps {
   recipe: Recipe;
-  servings: number;
-  servingsOptions: number[];
   sourceLabel: string;
   createdLabel: string;
-  onServingsChange: (next: number) => void;
 }
 
 export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
-  const { recipe, servings, servingsOptions, sourceLabel, createdLabel, onServingsChange } = props;
+  const { recipe, sourceLabel, createdLabel } = props;
 
   return (
-    <article className={`card ${styles.headerCard}`}>
+    <article className={styles.headerCard}>
       <div className={styles.headerTop}>
         {recipe.heroPhotoUrl ? (
           <Image
@@ -26,7 +23,8 @@ export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
             height={700}
           />
         ) : null}
-        <div className={styles.headerMeta}>
+        <div className={styles.headerMetaPanel}>
+          <div className={styles.headerMeta}>
           <h2 className={styles.title}>{recipe.title}</h2>
           {recipe.description ? <p className={styles.description}>{recipe.description}</p> : null}
           {recipe.tags.length > 0 ? (
@@ -39,16 +37,6 @@ export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
             </ul>
           ) : null}
           <div className={`row ${styles.metaRow}`}>
-            <label>
-              Servings
-              <select value={String(servings)} onChange={(event) => onServingsChange(Number(event.target.value))}>
-                {servingsOptions.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
             <div>
               <p className={`muted ${styles.metricLabel}`}>Total time</p>
               <strong>{recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} minutes` : "Not set"}</strong>
@@ -62,9 +50,9 @@ export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
               <strong>{createdLabel}</strong>
             </div>
           </div>
+          </div>
         </div>
       </div>
     </article>
   );
 }
-

@@ -113,14 +113,17 @@ export function RecipeView({ recipe }: RecipeViewProps) {
     <section className={styles.section}>
       <RecipeHeaderCard
         recipe={recipe}
-        servings={servings}
-        servingsOptions={servingsOptions}
         sourceLabel={sourceLabel}
         createdLabel={createdLabel}
-        onServingsChange={setServings}
       />
 
-      <IngredientsCard mainIngredients={mainIngredients} pantryIngredients={pantryIngredients} />
+      <IngredientsCard
+        mainIngredients={mainIngredients}
+        pantryIngredients={pantryIngredients}
+        servings={servings}
+        servingsOptions={servingsOptions}
+        onServingsChange={setServings}
+      />
 
       <PrepTasksCard prepTasks={recipe.prepTasks} />
 

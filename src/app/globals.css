@@ -11,7 +11,7 @@ body {
 }
 
 body {
-  background: radial-gradient(1200px 600px at 10% -20%, #ffffff 0, #f9fafb 45%, var(--bg) 100%);
+  background: linear-gradient(180deg, #fbf6eb 0%, var(--bg) 100%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: var(--font-size-md);
@@ -27,16 +27,11 @@ a:hover {
   text-decoration: underline;
 }
 
-main {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-8);
-}
-
 h1,
 h2,
 h3 {
   margin-top: 0;
+  font-family: var(--font-heading);
   line-height: var(--line-height-tight);
   letter-spacing: -0.01em;
 }
@@ -85,7 +80,7 @@ button {
 }
 
 button:hover {
-  background: #0b1220;
+  background: #251e16;
 }
 
 button:disabled {
@@ -104,11 +99,11 @@ button.secondary:hover {
 }
 
 .card {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, #fff 6%);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 1px 0 rgba(117, 83, 31, 0.06);
 }
 
 .muted {
@@ -127,7 +122,7 @@ button.secondary:hover {
 
 .tag {
   background: var(--accent-soft);
-  color: #0c6a54;
+  color: #855d1f;
   border-radius: var(--radius-pill);
   padding: 3px 10px;
   font-size: var(--font-size-sm);

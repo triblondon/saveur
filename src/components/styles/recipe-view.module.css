@@ -6,7 +6,6 @@
 .headerCard {
   display: grid;
   gap: var(--space-3);
-  position: relative;
 }
 
 .headerTop {
@@ -14,33 +13,84 @@
   gap: var(--space-4);
 }
 
+.headerMetaPanel {
+  background: #efe7d5;
+  border-radius: 18px;
+  padding: clamp(18px, 2.3vw, 28px);
+}
+
 .headerMeta {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-content: start;
 }
 
 .heroImage {
   width: 100%;
-  height: 320px;
+  height: clamp(280px, 43vw, 430px);
   object-fit: cover;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  border: 0;
+  box-shadow: var(--shadow-sm);
 }
 
-@media (min-width: 900px) {
+@media (min-width: 920px) {
+  .headerCard {
+    gap: 0;
+  }
+
   .headerTop {
-    grid-template-columns: minmax(320px, 42%) 1fr;
-    align-items: start;
+    grid-template-columns: minmax(320px, 47%) 1fr;
+    align-items: stretch;
+    gap: var(--space-6);
+    border-radius: 18px;
+    background: #efe7d5;
+    overflow: hidden;
+  }
+
+  .heroImage {
+    height: 100%;
+    min-height: 420px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .headerMetaPanel {
+    background: transparent;
+    border-radius: 0;
+    padding: clamp(20px, 2.1vw, 30px) clamp(18px, 2vw, 28px) clamp(20px, 2.1vw, 30px) 0;
+  }
+}
+
+@media (max-width: 919px) {
+  .headerCard {
+    margin-inline: calc(50% - 50vw);
+  }
+
+  .headerTop {
+    gap: 0;
+  }
+
+  .heroImage {
+    height: 320px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .headerMetaPanel {
+    margin: 0;
   }
 }
 
 .title {
   margin: 0;
+  font-size: clamp(1.9rem, 3vw, 2.5rem);
+  line-height: 1.08;
 }
 
 .description {
   color: var(--text-secondary);
+  font-size: 1.05rem;
 }
 
 .tagList {
@@ -102,24 +152,52 @@
 .prepTitle,
 .cookTitle {
   margin-top: 0;
+  margin-bottom: var(--space-3);
+}
+
+.ingredientsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.ingredientsServingsControl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.ingredientsServingsLabel {
+  margin: 0;
+}
+
+.ingredientsServingsControl select {
+  width: auto;
+  min-width: 76px;
+  padding: 6px 28px 6px 10px;
 }
 
 .ingredientsTable {
-  min-width: 50%;
+  width: 100%;
   border-collapse: collapse;
 }
 
 .ingredientNameCell,
 .ingredientQtyCell {
-  padding: 6px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--border-subtle);
 }
 
 .ingredientQtyCell {
   text-align: right;
+  white-space: nowrap;
 }
 
 .pantryLine {
+  margin-top: var(--space-3);
   margin-bottom: 0;
 }
 
@@ -130,7 +208,7 @@
 }
 
 .prepItem {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .stepDetail,
@@ -161,7 +239,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 
 .stepTitle {
@@ -180,7 +258,7 @@
 }
 
 .stickyContainerTop {
-  top: 10px;
+  top: 72px;
 }
 
 .stickyContainerBottom {
