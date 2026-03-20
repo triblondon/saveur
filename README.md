@@ -29,7 +29,9 @@ The import schema is sourced from `openapi/openapi.yaml` and resolved at runtime
 - File persistence fallback is used otherwise (`data/store.json`).
 - Recipe content (ingredients/prep/cook) is stored as JSONB arrays on `recipes`.
 - Import runs are stored in `import_runs` including warnings.
-- Source snapshots + hero photos are stored via object storage integration.
+- Source snapshots are stored in Vercel Blob when configured, otherwise `data/snapshots`.
+- Hero photos (including imported remote hero images) are stored in Vercel Blob when configured, otherwise local filesystem under `data/objects` and served by `/api/storage/...`.
+- In local development (`NODE_ENV=development`), filesystem storage is used by default.
 
 ## Local development
 
@@ -39,7 +41,7 @@ The import schema is sourced from `openapi/openapi.yaml` and resolved at runtime
    - `OPENAI_API_KEY=...`
    - optional `OPENAI_IMPORT_MODEL=...` (default: `gpt-4.1`)
    - optional `DATABASE_URL=...` (for Postgres mode)
-   - optional `BLOB_READ_WRITE_TOKEN=...` (for blob uploads)
+   - optional `BLOB_READ_WRITE_TOKEN=...` (for Vercel Blob in non-local environments)
 3. Run migrations when using Postgres
    - `npm run db:migrate`
 4. Start app

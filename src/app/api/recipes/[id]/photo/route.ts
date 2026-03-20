@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
 import { getRecipeById, updateRecipe } from "@/lib/store";
-import { isObjectStorageConfigured, uploadObject } from "@/lib/object-storage";
+import { uploadObject } from "@/lib/object-storage";
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -28,15 +28,6 @@ function extensionForType(contentType: string): string {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  if (!isObjectStorageConfigured()) {
-    return NextResponse.json(
-      {
-        error: "Object storage is not configured. Set BLOB_READ_WRITE_TOKEN to enable uploads."
-      },
-      { status: 400 }
-    );
-  }
-
   const params = await context.params;
   const recipe = await getRecipeById(params.id);
   if (!recipe) {

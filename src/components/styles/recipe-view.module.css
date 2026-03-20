@@ -138,6 +138,16 @@
   word-break: break-word;
 }
 
+.sourceLink {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sourceLink:hover {
+  color: var(--accent-strong);
+}
+
 .actionsFooter {
   display: grid;
   gap: var(--space-3);

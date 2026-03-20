@@ -10,6 +10,8 @@ interface RecipeHeaderCardProps {
 
 export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
   const { recipe, sourceLabel, createdLabel } = props;
+  const sourceHref = recipe.sourceRef.trim();
+  const sourceLink = recipe.sourceType === "URL" && sourceHref ? sourceHref : null;
 
   return (
     <article className={styles.headerCard}>
@@ -43,7 +45,20 @@ export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
             </div>
             <div>
               <p className={`muted ${styles.metricLabel}`}>Source</p>
-              <strong className={styles.sourceValue}>{sourceLabel}</strong>
+              <strong className={styles.sourceValue}>
+                {sourceLink ? (
+                  <a
+                    href={sourceLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.sourceLink}
+                  >
+                    {sourceLabel}
+                  </a>
+                ) : (
+                  sourceLabel
+                )}
+              </strong>
             </div>
             <div>
               <p className={`muted ${styles.metricLabel}`}>{recipe.sourceType === "URL" ? "Imported" : "Created"}</p>

@@ -15,20 +15,15 @@ const NAV_LINKS = [
 
 function BrandLogo() {
   return (
-    <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="saveurLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ffe38b" />
-          <stop offset="100%" stopColor="#c9a146" />
-        </linearGradient>
-      </defs>
-      <rect x="1.5" y="1.5" width="29" height="29" rx="9" fill="#15110b" stroke="#322517" />
+    <svg width="26" height="26" viewBox="0 0 36 36" aria-hidden="true" focusable="false">
       <path
-        d="M21.7 9.1c-1.9-.7-4 .3-4.7 2.2l-.3.8c-.9-1.1-2.4-1.6-3.8-1.2-2 .6-3.1 2.7-2.5 4.7.6 2 2.7 3.1 4.7 2.5l3.2-1 4-2.9c1.5-1.1 2.1-3.1 1.4-4.9Z"
-        fill="url(#saveurLogoGradient)"
+        d="M13 3c5 2 8 8 6 13s-7 8-10 11-4 7-2 10c-4-3-6-8-4-12 2-5 7-8 10-11 2-2 4-6 0-11Z"
+        fill="currentColor"
       />
-      <circle cx="12.1" cy="21.2" r="2.3" fill="#f5f2e7" />
-      <circle cx="20.2" cy="20.4" r="1.8" fill="#f0dca7" />
+      <path
+        d="M24 10c4 2 6 6 5 10-2 4-5 6-8 8-3 2-4 6-2 9-3-2-4-6-3-9 1-4 5-6 8-8 2-2 3-6 0-10Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }

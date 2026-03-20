@@ -5,5 +5,8 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
-data/store.json
-data/snapshots/*.html
+data/*
+!data/.gitkeep
+!data/snapshots/
+data/snapshots/*
+!data/snapshots/.gitkeep
