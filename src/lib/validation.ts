@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject } from "ajv";
 import addFormats from "ajv-formats";
-import { getOpenApiDereferencedSchema, getOpenApiRefSchema } from "@/lib/openapi";
+import { getOpenApiDereferencedSchema } from "@/lib/openapi";
 import type {
   ImportDraft,
   ImportUrlRequest,
@@ -27,7 +27,7 @@ const ajv = new Ajv({
 addFormats(ajv);
 
 function createParser<T>(schemaName: keyof import("@/generated/openapi").components["schemas"]) {
-  const validate = ajv.compile(getOpenApiRefSchema(schemaName));
+  const validate = ajv.compile(getOpenApiDereferencedSchema(schemaName));
 
   return (value: unknown): T => {
     if (validate(value)) {

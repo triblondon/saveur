@@ -34,6 +34,14 @@
   box-shadow: var(--shadow-sm);
 }
 
+.heroPlaceholder {
+  width: 100%;
+  height: clamp(280px, 43vw, 430px);
+  border-radius: 18px;
+  border: 0;
+  box-shadow: var(--shadow-sm);
+}
+
 @media (min-width: 920px) {
   .headerCard {
     gap: 0;
@@ -49,6 +57,13 @@
   }
 
   .heroImage {
+    height: 100%;
+    min-height: 420px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .heroPlaceholder {
     height: 100%;
     min-height: 420px;
     border-radius: 0;
@@ -72,6 +87,12 @@
   }
 
   .heroImage {
+    height: 320px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .heroPlaceholder {
     height: 320px;
     border-radius: 0;
     box-shadow: none;

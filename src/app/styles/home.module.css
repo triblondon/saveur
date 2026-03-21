@@ -82,6 +82,13 @@
   border: 1px solid var(--border-subtle);
 }
 
+.heroPlaceholder {
+  width: 100%;
+  height: 220px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
 .durationBadge {
   position: absolute;
   top: 10px;
@@ -113,10 +120,6 @@
 
 .recipeTitleLink:hover {
   text-decoration: underline;
-}
-
-.meta {
-  font-size: var(--font-size-sm);
 }
 
 @media (min-width: 960px) {

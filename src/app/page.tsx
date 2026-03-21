@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { listRecipeSummaries } from "@/lib/store";
+import { HeroImagePlaceholder } from "@/components/HeroImagePlaceholder";
 import styles from "@/app/styles/home.module.css";
 
 interface HomeProps {
@@ -43,8 +44,8 @@ export default async function Home({ searchParams }: HomeProps) {
         <div className={styles.recipeList}>
           {recipes.map((recipe) => (
             <article className={`card ${styles.recipeCard}`} key={recipe.id}>
-              {recipe.heroPhotoUrl ? (
-                <Link className={styles.heroLink} href={`/recipes/${recipe.id}`}>
+              <Link className={styles.heroLink} href={`/recipes/${recipe.id}`}>
+                {recipe.heroPhotoUrl ? (
                   <Image
                     className={styles.heroImage}
                     src={recipe.heroPhotoUrl}
@@ -52,21 +53,18 @@ export default async function Home({ searchParams }: HomeProps) {
                     width={1200}
                     height={680}
                   />
-                  <span className={styles.durationBadge}>
-                    {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
-                  </span>
-                </Link>
-              ) : null}
+                ) : (
+                  <HeroImagePlaceholder className={styles.heroPlaceholder} />
+                )}
+                <span className={styles.durationBadge}>
+                  {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
+                </span>
+              </Link>
               <h2 className={styles.recipeTitle}>
                 <Link className={styles.recipeTitleLink} href={`/recipes/${recipe.id}`}>
                   {recipe.title}
                 </Link>
               </h2>
-              {!recipe.heroPhotoUrl ? (
-                <p className={`muted ${styles.meta}`}>
-                  {recipe.timeRequiredMinutes ? `${recipe.timeRequiredMinutes} min` : "Time unknown"}
-                </p>
-              ) : null}
             </article>
           ))}
         </div>

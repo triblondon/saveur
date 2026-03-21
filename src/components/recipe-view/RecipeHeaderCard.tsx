@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { HeroImagePlaceholder } from "@/components/HeroImagePlaceholder";
 import type { Recipe } from "@/lib/types";
 import styles from "@/components/styles/recipe-view.module.css";
 
@@ -24,7 +25,9 @@ export function RecipeHeaderCard(props: RecipeHeaderCardProps) {
             width={1200}
             height={700}
           />
-        ) : null}
+        ) : (
+          <HeroImagePlaceholder className={styles.heroPlaceholder} />
+        )}
         <div className={styles.headerMetaPanel}>
           <div className={styles.headerMeta}>
           <h2 className={styles.title}>{recipe.title}</h2>
