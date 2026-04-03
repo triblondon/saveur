@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { EditRecipeForm } from "@/components/EditRecipeForm";
-import { getRecipeById } from "@/lib/store";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getRecipeByIdForUser, listWritableCollectionsForUser } from "@/lib/store";
 import styles from "@/app/styles/page.module.css";
 
 interface EditRecipePageProps {
@@ -9,11 +10,23 @@ interface EditRecipePageProps {
 }
 
 export default async function EditRecipePage({ params }: EditRecipePageProps) {
-  const { id } = await params;
-  const recipe = await getRecipeById(id);
+  const resolved = await params;
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect(`/auth?next=/recipes/${resolved.id}/edit`);
+  }
+
+  const { id } = resolved;
+  const recipe = await getRecipeByIdForUser(id, user.id);
 
   if (!recipe) {
     notFound();
+  }
+
+  const writableCollections = await listWritableCollectionsForUser(user.id);
+  const writableCollectionIds = new Set(writableCollections.map((entry) => entry.id));
+  if (!recipe.collectionId || !writableCollectionIds.has(recipe.collectionId)) {
+    redirect(`/recipes/${recipe.id}`);
   }
 
   return (
@@ -24,7 +37,7 @@ export default async function EditRecipePage({ params }: EditRecipePageProps) {
           Back to recipe
         </Link>
       </p>
-      <EditRecipeForm recipe={recipe} />
+      <EditRecipeForm recipe={recipe} writableCollections={writableCollections} />
     </section>
   );
 }

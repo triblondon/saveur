@@ -10,15 +10,13 @@
 .headerInner {
   width: min(1120px, 100% - 32px);
   margin: 0 auto;
-  display: grid;
-  gap: var(--space-3);
   padding: 10px 0;
 }
 
 .topRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 
@@ -31,7 +29,6 @@
 .brandLink {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
   color: var(--text-primary);
   text-decoration: none;
 }
@@ -40,58 +37,97 @@
   text-decoration: none;
 }
 
-.brandLogo {
-  display: inline-flex;
-  align-items: center;
-}
-
-.headerRight {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.menuButton {
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
+.desktopPrimaryNav {
+  display: none;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-}
-
-.menuButton:hover {
-  background: var(--surface-strong);
-  color: var(--text-primary);
-}
-
-.nav {
-  display: none;
   gap: var(--space-2);
-  padding: 0 0 var(--space-2);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.navOpen {
-  display: flex;
-  flex-direction: column;
 }
 
 .navLink {
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--text-secondary);
   text-decoration: none;
 }
 
 .navLink:hover {
   color: var(--text-primary);
+  border-color: var(--border-subtle);
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.headerRight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.userMenuWrap {
+  position: relative;
+}
+
+.userBadgeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 9px;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.userBadgeButton:hover {
+  background: var(--surface-strong);
+}
+
+.userBadgeIcon {
+  display: inline-flex;
+  color: var(--text-secondary);
+}
+
+.userBadgeInitials {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.userMenuPanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 196px;
+  display: grid;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 8px;
+}
+
+.userMenuLink {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.userMenuLink:hover {
+  color: var(--text-primary);
   background: var(--surface-muted);
   text-decoration: none;
+}
+
+.userMenuButton {
+  width: 100%;
+  justify-content: center;
 }
 
 .pageMain {
@@ -101,29 +137,8 @@
 }
 
 @media (min-width: 840px) {
-  .menuButton {
-    display: none;
-  }
-
-  .nav,
-  .navOpen {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 0;
-    border: 0;
-  }
-
-  .navLink {
-    padding: 6px 10px;
-    border: 1px solid transparent;
-    border-radius: var(--radius-pill);
-  }
-
-  .navLink:hover {
-    border-color: var(--border-subtle);
-    background: var(--surface);
+  .desktopPrimaryNav {
+    display: inline-flex;
   }
 }
 

@@ -1,15 +1,17 @@
 .page {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .heading {
   margin: 0;
   font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  line-height: 1.12;
 }
 
 .description {
-  margin-top: -2px;
+  margin: 0;
+  max-width: 62ch;
 }
 
 .backLink {

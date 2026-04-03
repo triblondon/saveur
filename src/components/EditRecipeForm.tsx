@@ -10,6 +10,7 @@ import {
   type Ingredient,
   type IngredientInput,
   type PrepTaskInput,
+  type CollectionSummary,
   type Recipe,
   type SourceType
 } from "@/lib/types";
@@ -170,6 +171,7 @@ function mapIssueToFieldKey(issue: ValidationIssue, maps: PayloadIndexMaps): str
       "title",
       "description",
       "tags",
+      "collectionId",
       "sourceType",
       "sourceRef",
       "heroPhotoUrl",
@@ -207,9 +209,15 @@ function reorderByIndex<T>(items: T[], sourceIndex: number, targetIndex: number)
 
 interface EditRecipeFormProps {
   recipe?: Recipe;
+  writableCollections?: CollectionSummary[];
+  initialCollectionId?: string;
 }
 
-export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
+export function EditRecipeForm({
+  recipe,
+  writableCollections = [],
+  initialCollectionId = "",
+}: EditRecipeFormProps) {
   const router = useRouter();
   const isEdit = Boolean(recipe);
 
@@ -223,6 +231,15 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
   const [minutes, setMinutes] = useState(
     recipe?.timeRequiredMinutes ? String(recipe.timeRequiredMinutes) : ""
   );
+  const [collectionId, setCollectionId] = useState(() => {
+    if (recipe?.collectionId && writableCollections.some((entry) => entry.id === recipe.collectionId)) {
+      return recipe.collectionId;
+    }
+    if (initialCollectionId && writableCollections.some((entry) => entry.id === initialCollectionId)) {
+      return initialCollectionId;
+    }
+    return writableCollections[0]?.id ?? "";
+  });
   const [ingredients, setIngredients] = useState<IngredientFormItem[]>(
     recipe && recipe.ingredients.length > 0
       ? recipe.ingredients.map((ingredient, index) => ({
@@ -450,6 +467,7 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
       }
 
       const payload = {
+        collectionId: collectionId.trim(),
         title: title.trim(),
         description: description.trim() || null,
         tags: tags.map((tag) => tag.trim()).filter(Boolean),
@@ -468,6 +486,11 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
       if (!payload.title) {
         setFieldErrors({ title: ["Title is required"] });
         throw new Error("Title is required");
+      }
+
+      if (!payload.collectionId) {
+        setFieldErrors({ collectionId: ["Collection is required"] });
+        throw new Error("Collection is required");
       }
 
       if (payload.ingredients.length === 0) {
@@ -595,6 +618,27 @@ export function EditRecipeForm({ recipe }: EditRecipeFormProps) {
           <TagsInput values={tags} onChange={setTags} />
         </div>
         {fieldErrorText("tags")}
+      </div>
+
+      <div className="row">
+        <label>
+          Collection
+          <select
+            className={inputClass("collectionId")}
+            value={collectionId}
+            onChange={(event) => setCollectionId(event.target.value)}
+          >
+            {writableCollections.length === 0 ? (
+              <option value="">No writable collections</option>
+            ) : null}
+            {writableCollections.map((collection) => (
+              <option key={collection.id} value={collection.id}>
+                {collection.name}
+              </option>
+            ))}
+          </select>
+          {fieldErrorText("collectionId")}
+        </label>
       </div>
 
       <div className="row">

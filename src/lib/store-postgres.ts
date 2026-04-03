@@ -9,22 +9,29 @@ import {
   updateRecipeFromDraft
 } from "@/lib/store-shared";
 import type {
+  CollectionCreateInput,
+  CollectionRole,
+  CollectionUpdateInput,
   CookStep,
-  Ingredient,
   ImportRun,
   ImportStatus,
+  Ingredient,
   PrepTask,
   Recipe,
   RecipeCreateInput,
   RecipeSummary,
   SourceSnapshot,
-  SourceType
+  SourceType,
+  UserRecord,
+  UserSummary
 } from "@/lib/types";
 import type { ParsedRecipeDraft } from "@/lib/import/types";
 
 interface RecipeRow {
   id: string;
   owner_id: string | null;
+  created_by_user_id: string | null;
+  collection_id: string | null;
   title: string;
   description: string | null;
   hero_photo_url: string | null;
@@ -44,6 +51,7 @@ interface RecipeRow {
 
 interface RecipeSummaryRow {
   id: string;
+  collection_id: string | null;
   title: string;
   hero_photo_url: string | null;
   serving_count: number | string | null;
@@ -56,6 +64,7 @@ interface RecipeSummaryRow {
 interface ImportRunRow {
   id: string;
   owner_id: string | null;
+  created_by_user_id: string | null;
   source_type: SourceType;
   source_url: string;
   adapter_name: string;
@@ -76,6 +85,49 @@ interface SourceSnapshotRow {
   content_type: string;
   fetched_at: Date | string;
   fetch_status: "OK" | "FAILED";
+}
+
+interface UserRow {
+  id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+interface CollectionRow {
+  id: string;
+  name: string;
+  description: string | null;
+  visibility: "public" | "private";
+  owner_user_id: string;
+  created_at: Date | string;
+  updated_at: Date | string;
+}
+
+interface CollectionMemberRow {
+  collection_id: string;
+  user_id: string;
+  role: Exclude<CollectionRole, "OWNER">;
+  created_at: Date | string;
+}
+
+interface CollectionRecord {
+  id: string;
+  name: string;
+  description: string | null;
+  visibility: "public" | "private";
+  ownerUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CollectionMemberRecord {
+  collectionId: string;
+  userId: string;
+  role: Exclude<CollectionRole, "OWNER">;
+  createdAt: string;
 }
 
 function nowIso(): string {
@@ -132,10 +184,16 @@ function normalizeSearch(value: string): string {
   return value.toLowerCase().trim();
 }
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 function toRecipe(row: RecipeRow): Recipe {
   return {
     id: row.id,
-    ownerId: row.owner_id,
+    ownerId: row.created_by_user_id ?? row.owner_id ?? null,
+    createdByUserId: row.created_by_user_id ?? row.owner_id ?? null,
+    collectionId: row.collection_id,
     title: row.title,
     sourceType: row.source_type,
     sourceRef: row.source_ref,
@@ -163,14 +221,15 @@ function toRecipeSummary(row: RecipeSummaryRow): RecipeSummary {
     servingCount: parseInteger(row.serving_count),
     sourceType: row.source_type,
     tags: asStringArray(row.tags),
-    updatedAt: asIso(row.updated_at)
+    updatedAt: asIso(row.updated_at),
+    collectionId: row.collection_id
   };
 }
 
 function toImportRun(row: ImportRunRow): ImportRun {
   return {
     id: row.id,
-    ownerId: row.owner_id,
+    createdByUserId: row.created_by_user_id ?? row.owner_id ?? null,
     sourceType: row.source_type,
     sourceUrl: row.source_url,
     adapterName: row.adapter_name,
@@ -196,6 +255,192 @@ function toSnapshot(row: SourceSnapshotRow): SourceSnapshot {
   };
 }
 
+function toUserSummary(row: UserRow): UserSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email
+  };
+}
+
+function toUserRecord(row: UserRow): UserRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    passwordHash: row.password_hash,
+    createdAt: asIso(row.created_at),
+    updatedAt: asIso(row.updated_at)
+  };
+}
+
+function toCollectionRecord(row: CollectionRow): CollectionRecord {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    visibility: row.visibility,
+    ownerUserId: row.owner_user_id,
+    createdAt: asIso(row.created_at),
+    updatedAt: asIso(row.updated_at)
+  };
+}
+
+function toCollectionMemberRecord(row: CollectionMemberRow): CollectionMemberRecord {
+  return {
+    collectionId: row.collection_id,
+    userId: row.user_id,
+    role: row.role,
+    createdAt: asIso(row.created_at)
+  };
+}
+
+export async function getUserById(id: string): Promise<UserSummary | null> {
+  const result = await query<UserRow>(`SELECT * FROM users WHERE id = $1 LIMIT 1`, [id]);
+  const row = result.rows[0];
+  return row ? toUserSummary(row) : null;
+}
+
+export async function getUserAuthByEmail(email: string): Promise<UserRecord | null> {
+  const normalized = normalizeEmail(email);
+  const result = await query<UserRow>(`SELECT * FROM users WHERE LOWER(email) = $1 LIMIT 1`, [normalized]);
+  const row = result.rows[0];
+  return row ? toUserRecord(row) : null;
+}
+
+export async function createUser(input: {
+  name: string;
+  email: string;
+  passwordHash: string;
+}): Promise<UserSummary> {
+  const timestamp = nowIso();
+  const id = randomUUID();
+  const email = normalizeEmail(input.email);
+
+  try {
+    const result = await query<UserRow>(
+      `
+        INSERT INTO users (id, name, email, password_hash, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5::timestamptz, $6::timestamptz)
+        RETURNING *
+      `,
+      [id, input.name.trim(), email, input.passwordHash, timestamp, timestamp]
+    );
+    return toUserSummary(result.rows[0]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("users_email_lower_idx")) {
+      throw new Error("EMAIL_EXISTS");
+    }
+    throw error;
+  }
+}
+
+export async function createCollection(ownerUserId: string, input: CollectionCreateInput) {
+  const id = randomUUID();
+  const timestamp = nowIso();
+  const result = await query<CollectionRow>(
+    `
+      INSERT INTO collections (id, name, description, visibility, owner_user_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7::timestamptz)
+      RETURNING *
+    `,
+    [id, input.name.trim(), input.description, input.visibility, ownerUserId, timestamp, timestamp]
+  );
+  return toCollectionRecord(result.rows[0]);
+}
+
+export async function updateCollection(collectionId: string, input: CollectionUpdateInput) {
+  const result = await query<CollectionRow>(
+    `
+      UPDATE collections
+      SET name = $2, description = $3, visibility = $4, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [collectionId, input.name.trim(), input.description, input.visibility]
+  );
+  return result.rows[0] ? toCollectionRecord(result.rows[0]) : null;
+}
+
+export async function getCollectionById(collectionId: string) {
+  const result = await query<CollectionRow>(`SELECT * FROM collections WHERE id = $1 LIMIT 1`, [collectionId]);
+  return result.rows[0] ? toCollectionRecord(result.rows[0]) : null;
+}
+
+export async function listCollections() {
+  const result = await query<CollectionRow>(`SELECT * FROM collections ORDER BY updated_at DESC`);
+  return result.rows.map(toCollectionRecord);
+}
+
+export async function listCollectionMembers(collectionId: string) {
+  const result = await query<CollectionMemberRow>(
+    `SELECT * FROM collection_members WHERE collection_id = $1`,
+    [collectionId]
+  );
+  return result.rows.map(toCollectionMemberRecord);
+}
+
+export async function upsertCollectionMember(
+  collectionId: string,
+  userId: string,
+  role: Exclude<CollectionRole, "OWNER">
+): Promise<void> {
+  await withTransaction(async (tx) => {
+    await tx(
+      `
+        INSERT INTO collection_members (collection_id, user_id, role, created_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (collection_id, user_id)
+        DO UPDATE SET role = EXCLUDED.role
+      `,
+      [collectionId, userId, role]
+    );
+    await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [collectionId]);
+  });
+}
+
+export async function removeCollectionMember(collectionId: string, userId: string): Promise<void> {
+  await withTransaction(async (tx) => {
+    await tx(`DELETE FROM collection_members WHERE collection_id = $1 AND user_id = $2`, [
+      collectionId,
+      userId
+    ]);
+    await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [collectionId]);
+  });
+}
+
+export async function deleteCollection(collectionId: string): Promise<void> {
+  await query(`DELETE FROM collections WHERE id = $1`, [collectionId]);
+}
+
+export async function moveRecipesBetweenCollections(
+  sourceCollectionId: string,
+  targetCollectionId: string
+): Promise<void> {
+  await withTransaction(async (tx) => {
+    await tx(
+      `
+        UPDATE recipes
+        SET collection_id = $2, updated_at = NOW()
+        WHERE collection_id = $1
+      `,
+      [sourceCollectionId, targetCollectionId]
+    );
+    await tx(`UPDATE collections SET updated_at = NOW() WHERE id IN ($1, $2)`, [
+      sourceCollectionId,
+      targetCollectionId
+    ]);
+  });
+}
+
+export async function deleteRecipesByCollection(collectionId: string): Promise<void> {
+  await withTransaction(async (tx) => {
+    await tx(`DELETE FROM recipes WHERE collection_id = $1`, [collectionId]);
+    await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [collectionId]);
+  });
+}
+
 async function insertOrUpdateRecipe(
   queryFn: typeof query,
   recipe: Recipe,
@@ -205,6 +450,8 @@ async function insertOrUpdateRecipe(
     INSERT INTO recipes (
       id,
       owner_id,
+      created_by_user_id,
+      collection_id,
       title,
       description,
       hero_photo_url,
@@ -222,21 +469,23 @@ async function insertOrUpdateRecipe(
       created_at,
       updated_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7,
-      $8::jsonb,
-      $9,
-      $10,
+      $1, $2, $3, $4, $5, $6, $7, $8, $9,
+      $10::jsonb,
       $11,
       $12,
-      $13::jsonb,
-      $14::jsonb,
+      $13,
+      $14,
       $15::jsonb,
-      $16,
-      $17::timestamptz,
-      $18::timestamptz
+      $16::jsonb,
+      $17::jsonb,
+      $18,
+      $19::timestamptz,
+      $20::timestamptz
     )
     ON CONFLICT (id) DO UPDATE SET
       owner_id = EXCLUDED.owner_id,
+      created_by_user_id = EXCLUDED.created_by_user_id,
+      collection_id = EXCLUDED.collection_id,
       title = EXCLUDED.title,
       description = EXCLUDED.description,
       hero_photo_url = EXCLUDED.hero_photo_url,
@@ -257,7 +506,9 @@ async function insertOrUpdateRecipe(
 
   await queryFn(sql, [
     recipe.id,
-    recipe.ownerId,
+    recipe.createdByUserId,
+    recipe.createdByUserId,
+    recipe.collectionId,
     recipe.title,
     recipe.description,
     recipe.heroPhotoUrl,
@@ -281,7 +532,7 @@ export type ManualRecipeInput = RecipeCreateInput;
 
 export async function listRecipeSummaries(queryText?: string): Promise<RecipeSummary[]> {
   const baseSelect = `
-    SELECT id, title, hero_photo_url, serving_count, time_required_minutes, tags, source_type, updated_at
+    SELECT id, collection_id, title, hero_photo_url, serving_count, time_required_minutes, tags, source_type, updated_at
     FROM recipes
   `;
 
@@ -301,9 +552,7 @@ export async function listRecipeSummaries(queryText?: string): Promise<RecipeSum
 
 export async function listRecipes(queryText?: string): Promise<Recipe[]> {
   if (!queryText?.trim()) {
-    const result = await query<RecipeRow>(
-      `SELECT * FROM recipes ORDER BY updated_at DESC`
-    );
+    const result = await query<RecipeRow>(`SELECT * FROM recipes ORDER BY updated_at DESC`);
     return result.rows.map(toRecipe);
   }
 
@@ -313,6 +562,14 @@ export async function listRecipes(queryText?: string): Promise<Recipe[]> {
     [needle]
   );
 
+  return result.rows.map(toRecipe);
+}
+
+export async function listRecipesByCollection(collectionId: string): Promise<Recipe[]> {
+  const result = await query<RecipeRow>(
+    `SELECT * FROM recipes WHERE collection_id = $1 ORDER BY updated_at DESC`,
+    [collectionId]
+  );
   return result.rows.map(toRecipe);
 }
 
@@ -328,16 +585,22 @@ export async function getImportRunById(id: string): Promise<ImportRun | null> {
   return row ? toImportRun(row) : null;
 }
 
-export async function createManualRecipe(input: ManualRecipeInput): Promise<Recipe> {
+export async function createManualRecipe(
+  input: ManualRecipeInput & { createdByUserId: string | null; collectionId: string }
+): Promise<Recipe> {
   const timestamp = nowIso();
   const recipe = createManualRecipeRecord({
     input,
     recipeId: randomUUID(),
-    ownerId: null,
+    createdByUserId: input.createdByUserId,
+    collectionId: input.collectionId,
     timestamp
   });
 
-  await insertOrUpdateRecipe(query, recipe, timestamp);
+  await withTransaction(async (tx) => {
+    await insertOrUpdateRecipe(tx, recipe, timestamp);
+    await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [input.collectionId]);
+  });
   return recipe;
 }
 
@@ -359,12 +622,24 @@ export async function updateRecipe(
     updatedAt: timestamp
   };
 
-  await insertOrUpdateRecipe(query, next, timestamp);
+  await withTransaction(async (tx) => {
+    await insertOrUpdateRecipe(tx, next, timestamp);
+    if (existing.collectionId) {
+      await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [existing.collectionId]);
+    }
+    if (next.collectionId && next.collectionId !== existing.collectionId) {
+      await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [next.collectionId]);
+    }
+  });
   return next;
 }
 
 export async function deleteRecipe(id: string): Promise<boolean> {
+  const existing = await getRecipeById(id);
   const result = await query(`DELETE FROM recipes WHERE id = $1`, [id]);
+  if ((result.rowCount ?? 0) > 0 && existing?.collectionId) {
+    await query(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [existing.collectionId]);
+  }
   return (result.rowCount ?? 0) > 0;
 }
 
@@ -399,6 +674,8 @@ interface CreateImportedRecipeInput {
   snapshotId: string | null;
   draft: ParsedRecipeDraft;
   importPrompt?: string | null;
+  createdByUserId: string | null;
+  collectionId: string;
 }
 
 export async function createImportedRecipe(input: CreateImportedRecipeInput): Promise<{
@@ -413,7 +690,7 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
     snapshotId: input.snapshotId,
     draft: input.draft,
     id: randomUUID(),
-    ownerId: null,
+    createdByUserId: input.createdByUserId,
     createdAt: timestamp
   });
   const recipe = createImportedRecipeRecord({
@@ -422,7 +699,8 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
     importPrompt: input.importPrompt?.trim() || null,
     importRunId: importRun.id,
     recipeId: randomUUID(),
-    ownerId: null,
+    createdByUserId: input.createdByUserId,
+    collectionId: input.collectionId,
     createdAt: timestamp
   });
 
@@ -432,6 +710,7 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
         INSERT INTO import_runs (
           id,
           owner_id,
+          created_by_user_id,
           source_type,
           source_url,
           adapter_name,
@@ -444,12 +723,13 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
           error_message,
           created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13::timestamptz
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14::timestamptz
         )
       `,
       [
         importRun.id,
-        importRun.ownerId,
+        importRun.createdByUserId,
+        importRun.createdByUserId,
         importRun.sourceType,
         importRun.sourceUrl,
         importRun.adapterName,
@@ -465,6 +745,7 @@ export async function createImportedRecipe(input: CreateImportedRecipeInput): Pr
     );
 
     await insertOrUpdateRecipe(tx, recipe, timestamp);
+    await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [input.collectionId]);
   });
 
   return { recipe, importRun };
@@ -487,10 +768,9 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
   const timestamp = nowIso();
 
   return withTransaction(async (tx) => {
-    const existingResult = await tx<RecipeRow>(
-      `SELECT * FROM recipes WHERE id = $1 LIMIT 1 FOR UPDATE`,
-      [input.recipeId]
-    );
+    const existingResult = await tx<RecipeRow>(`SELECT * FROM recipes WHERE id = $1 LIMIT 1 FOR UPDATE`, [
+      input.recipeId
+    ]);
 
     const existingRow = existingResult.rows[0];
     if (!existingRow) {
@@ -506,7 +786,7 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
       snapshotId: input.snapshotId,
       draft: input.draft,
       id: randomUUID(),
-      ownerId: existing.ownerId,
+      createdByUserId: existing.createdByUserId,
       createdAt: timestamp
     });
 
@@ -523,6 +803,7 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
         INSERT INTO import_runs (
           id,
           owner_id,
+          created_by_user_id,
           source_type,
           source_url,
           adapter_name,
@@ -535,12 +816,13 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
           error_message,
           created_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13::timestamptz
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14::timestamptz
         )
       `,
       [
         importRun.id,
-        importRun.ownerId,
+        importRun.createdByUserId,
+        importRun.createdByUserId,
         importRun.sourceType,
         importRun.sourceUrl,
         importRun.adapterName,
@@ -556,15 +838,13 @@ export async function reimportRecipe(input: ReimportRecipeInput): Promise<{
     );
 
     await insertOrUpdateRecipe(tx, next, timestamp);
+    if (next.collectionId) {
+      await tx(`UPDATE collections SET updated_at = NOW() WHERE id = $1`, [next.collectionId]);
+    }
 
     return {
       recipe: next,
       importRun
     };
   });
-}
-
-export async function listImportRuns(): Promise<ImportRun[]> {
-  const result = await query<ImportRunRow>(`SELECT * FROM import_runs ORDER BY created_at DESC`);
-  return result.rows.map(toImportRun);
 }

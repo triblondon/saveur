@@ -9,6 +9,8 @@ import type {
   RecipeUpdateInput
 } from "@/lib/types";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 class ValidationError extends Error {
   issues: ErrorObject[];
 
@@ -69,3 +71,33 @@ export const parseRecipeCreateInput = createParser<RecipeCreateInput>("BaseRecip
 export const parseRecipeUpdateInput = createParser<RecipeUpdateInput>("BaseRecipe");
 
 export const validateImportDraft = createValidator<ImportDraft>("RecipeFromLlmImport");
+
+export function parseRecipeMutationRequest(value: unknown): {
+  collectionId: string;
+  recipe: RecipeCreateInput;
+} {
+  const payload = value as Record<string, unknown>;
+  const collectionIdRaw = typeof payload?.collectionId === "string" ? payload.collectionId.trim() : "";
+  if (!collectionIdRaw || !UUID_PATTERN.test(collectionIdRaw)) {
+    throw new ValidationError("Validation failed for collectionId", [
+      {
+        instancePath: "/collectionId",
+        schemaPath: "#/properties/collectionId",
+        keyword: "format",
+        params: {},
+        message: "must be a UUID"
+      }
+    ]);
+  }
+
+  if (!payload || typeof payload !== "object") {
+    throw new ValidationError("Validation failed for recipe payload", []);
+  }
+
+  const { collectionId: _collectionId, ...rest } = payload;
+  const recipe = parseRecipeCreateInput(rest);
+  return {
+    collectionId: collectionIdRaw,
+    recipe
+  };
+}

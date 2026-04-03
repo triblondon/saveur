@@ -9,9 +9,10 @@ import styles from "@/components/styles/recipe-view.module.css";
 interface RecipeActionsCardProps {
   recipe: Pick<Recipe, "id" | "sourceType" | "importPrompt">;
   latestImportWarnings: string[];
+  canEdit: boolean;
 }
 
-export function RecipeActionsCard({ recipe, latestImportWarnings }: RecipeActionsCardProps) {
+export function RecipeActionsCard({ recipe, latestImportWarnings, canEdit }: RecipeActionsCardProps) {
   const router = useRouter();
   const [reimporting, setReimporting] = useState(false);
   const [reimportError, setReimportError] = useState<string | null>(null);
@@ -50,10 +51,12 @@ export function RecipeActionsCard({ recipe, latestImportWarnings }: RecipeAction
   return (
     <article className={`card ${styles.actionsFooter}`}>
       <div className={`row ${styles.actionsRow}`}>
-        <Link href={`/recipes/${recipe.id}/edit`} className={`secondary ${styles.actionLink}`}>
-          Edit recipe
-        </Link>
-        {recipe.sourceType === "URL" && !showReimportPrompt ? (
+        {canEdit ? (
+          <Link href={`/recipes/${recipe.id}/edit`} className={`secondary ${styles.actionLink}`}>
+            Edit recipe
+          </Link>
+        ) : null}
+        {canEdit && recipe.sourceType === "URL" && !showReimportPrompt ? (
           <button
             type="button"
             className="secondary"
@@ -64,7 +67,7 @@ export function RecipeActionsCard({ recipe, latestImportWarnings }: RecipeAction
           </button>
         ) : null}
       </div>
-      {recipe.sourceType === "URL" && showReimportPrompt ? (
+      {canEdit && recipe.sourceType === "URL" && showReimportPrompt ? (
         <div className={`card ${styles.reimportPromptCard}`}>
           {latestImportWarnings.length > 0 ? (
             <div className={styles.importWarnings}>

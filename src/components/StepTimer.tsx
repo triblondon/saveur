@@ -14,6 +14,7 @@ interface StepTimerProps {
   instruction: string;
   timerInfo: StepTimerInfo;
   isHovered: boolean;
+  className?: string;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   onStart: () => void;
@@ -74,6 +75,7 @@ export function StepTimer(props: StepTimerProps) {
     instruction,
     timerInfo,
     isHovered,
+    className,
     onMouseEnter,
     onMouseLeave,
     onStart,
@@ -85,7 +87,7 @@ export function StepTimer(props: StepTimerProps) {
 
   return (
     <div
-      className={`${styles.timerShell} ${timerInfo.status === "idle" && isHovered ? styles.timerShellIdleHover : ""} ${running ? styles.timerShellRunning : ""} ${running && isHovered ? styles.timerShellRunningHover : ""}`}
+      className={`${styles.timerShell} ${className ?? ""} ${timerInfo.status === "idle" && isHovered ? styles.timerShellIdleHover : ""} ${running ? styles.timerShellRunning : ""} ${running && isHovered ? styles.timerShellRunningHover : ""}`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >

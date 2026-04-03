@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
-import { getRecipeById, updateRecipe } from "@/lib/store";
+import { getCurrentUser, touchSession } from "@/lib/auth/current-user";
+import { getRecipeByIdForUser, updateRecipeForUser } from "@/lib/store";
 import { uploadObject } from "@/lib/object-storage";
+import { forbiddenResponse, routeErrorResponse, unauthorizedResponse } from "@/lib/api/route-helpers";
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -28,8 +30,13 @@ function extensionForType(contentType: string): string {
 }
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const params = await context.params;
-  const recipe = await getRecipeById(params.id);
+  const recipe = await getRecipeByIdForUser(params.id, user.id);
   if (!recipe) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -75,12 +82,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     );
   }
 
-  const updated = await updateRecipe(recipe.id, { heroPhotoUrl: stored.publicUrl });
-  if (!updated) {
-    return NextResponse.json({ error: "Recipe not found after upload" }, { status: 404 });
-  }
+  try {
+    const updated = await updateRecipeForUser(user.id, recipe.id, { heroPhotoUrl: stored.publicUrl });
+    if (!updated) {
+      return NextResponse.json({ error: "Recipe not found after upload" }, { status: 404 });
+    }
 
-  return NextResponse.json({
-    recipe: updated
-  });
+    return touchSession(NextResponse.json({
+      recipe: updated
+    }), user);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("No write access")) {
+      return forbiddenResponse();
+    }
+    return routeErrorResponse(error, "Unable to update recipe photo");
+  }
 }

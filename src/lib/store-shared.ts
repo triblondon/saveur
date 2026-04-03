@@ -27,14 +27,17 @@ export function buildSearchBlob(recipe: {
 export function createManualRecipeRecord(params: {
   input: RecipeCreateInput;
   recipeId: string;
-  ownerId: string | null;
+  createdByUserId: string | null;
+  collectionId: string;
   timestamp: string;
 }): Recipe {
   const normalizedInput = normalizeRecipeCreateInput(params.input);
 
   return {
     id: params.recipeId,
-    ownerId: params.ownerId,
+    ownerId: params.createdByUserId,
+    createdByUserId: params.createdByUserId,
+    collectionId: params.collectionId,
     title: normalizedInput.title,
     sourceType: normalizedInput.sourceType,
     sourceRef: normalizedInput.sourceRef,
@@ -60,7 +63,7 @@ export function createImportRunRecord(params: {
   snapshotId: string | null;
   draft: ParsedRecipeDraft;
   id: string;
-  ownerId: string | null;
+  createdByUserId: string | null;
   createdAt: string;
 }): ImportRun {
   const draft = normalizeParsedRecipeDraft(params.draft);
@@ -68,7 +71,7 @@ export function createImportRunRecord(params: {
 
   return {
     id: params.id,
-    ownerId: params.ownerId,
+    createdByUserId: params.createdByUserId,
     sourceType: "URL",
     sourceUrl: params.sourceUrl,
     adapterName: params.adapterName,
@@ -89,14 +92,17 @@ export function createImportedRecipeRecord(params: {
   importPrompt: string | null;
   importRunId: string;
   recipeId: string;
-  ownerId: string | null;
+  createdByUserId: string | null;
+  collectionId: string;
   createdAt: string;
 }): Recipe {
   const draft = normalizeParsedRecipeDraft(params.draft);
 
   return {
     id: params.recipeId,
-    ownerId: params.ownerId,
+    ownerId: params.createdByUserId,
+    createdByUserId: params.createdByUserId,
+    collectionId: params.collectionId,
     title: draft.title,
     sourceType: "URL",
     sourceRef: params.sourceUrl,

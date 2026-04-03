@@ -1,7 +1,7 @@
 import path from "node:path";
 import { extractRecipeDraftWithLlm } from "@/lib/import/llm-import";
 import { uploadObject } from "@/lib/object-storage";
-import { createImportedRecipe, reimportRecipe, saveSourceSnapshot } from "@/lib/store";
+import { createImportedRecipeForUser, reimportRecipeForUser, saveSourceSnapshot } from "@/lib/store";
 import type { ParsedRecipeDraft } from "@/lib/import/types";
 
 interface ImportResult {
@@ -149,9 +149,14 @@ async function fetchHtml(url: string): Promise<string> {
 
 interface ImportFromUrlOptions {
   prompt?: string | null;
+  userId: string;
+  collectionId: string;
 }
 
 export async function importRecipeFromUrl(url: string, options?: ImportFromUrlOptions): Promise<ImportResult> {
+  if (!options?.userId || !options.collectionId) {
+    throw new Error("Import requires an authenticated user and destination collection");
+  }
   const html = await fetchHtml(url);
   const snapshot = await saveSourceSnapshot(url, html);
   const prompt = options?.prompt?.trim() || null;
@@ -162,13 +167,15 @@ export async function importRecipeFromUrl(url: string, options?: ImportFromUrlOp
     draft
   });
 
-  const { recipe, importRun } = await createImportedRecipe({
+  const { recipe, importRun } = await createImportedRecipeForUser({
     sourceUrl: url,
     adapterName: "llm-import",
     adapterVersion: model,
     snapshotId: snapshot.id,
     draft,
-    importPrompt: prompt
+    importPrompt: prompt,
+    userId: options.userId,
+    collectionId: options.collectionId
   });
 
   return {
@@ -182,6 +189,7 @@ export async function importRecipeFromUrl(url: string, options?: ImportFromUrlOp
 }
 
 interface ReimportFromUrlOptions {
+  userId: string;
   recipeId: string;
   url: string;
   prompt?: string | null;
@@ -202,7 +210,8 @@ export async function reimportRecipeFromUrl(options: ReimportFromUrlOptions): Pr
     draft
   });
 
-  const updated = await reimportRecipe({
+  const updated = await reimportRecipeForUser({
+    userId: options.userId,
     recipeId: options.recipeId,
     sourceUrl: options.url,
     adapterName: "llm-import",

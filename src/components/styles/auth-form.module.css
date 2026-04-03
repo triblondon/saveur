@@ -1,0 +1,36 @@
+.authStack {
+  width: min(560px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+}
+
+.form {
+  width: min(520px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.heading {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.8vw, 1.6rem);
+}
+
+.toggleButton {
+  border: 0;
+  background: transparent;
+  color: var(--accent-strong);
+  padding: 0;
+  font-weight: 600;
+}
+
+.toggleButton:hover {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.error {
+  color: #8f2b1c;
+  font-size: var(--font-size-sm);
+}

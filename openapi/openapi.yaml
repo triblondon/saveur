@@ -347,7 +347,7 @@ components:
     PrepTaskData:
       type: object
       additionalProperties: false
-      description: A single prep task, which uses one or more raw ingredients and should produce one single prepared ingredient.
+      description: A single prep task, which uses one or more raw ingredients and should produce one single prepared ingredient that can be referenced in cook steps.  Prep tasks are for maximizing mise en place, creating prepared ingredients that may be referenced in cook steps. Chopping, slicing, washing, spice mixes, stocks, etc. are prep tasks.  Prep tasks should be used when there is a clear transformation or when multiple raw ingredients are combined together, even if heat is involved, as long as the task can be done ahead of time and isn't time-sensitive.  For example, "chop onion and tomatoes and combine with spices" would be a prep task that produces a prepared ingredient like "spice mix" or "diced tomato", which is then added in a later cook step.
       required:
         - preparationName
         - detail
@@ -355,16 +355,18 @@ components:
       properties:
         preparationName:
           type: string
-          minLength: 5
+          minLength: 3
           maxLength: 30
-          description: Name of the resulting prepared ingredient name.  Must not conflict with any raw ingredient names (IngredientData.name).
+          description: Name of the resulting prepared ingredient name.  Must not conflict with any raw ingredient names (IngredientData.name).  Where possible use a concise name that captures the key transformation ('diced tomatoes') or intended purpose of the prepared ingredient ('marinade').  This name should be used in the sourceIngredients list of cook steps to refer to this prepared ingredient.  Max 30 chars.
           examples:
             - Spice mix
             - Stock
             - Soup base
-            - Peeled eggs
+            - Marinade
             - Chopped onion
             - Prepared vegetables
+            - Sauce
+            - Carrot mixture
         sourceIngredients:
           type: array
           minItems: 1
@@ -386,6 +388,9 @@ components:
           description: Detailed instructions for the prep task. Include all processing details and ingredient names.  Supports markdown.  Put raw ingredient names in **bold** but don't bold names of pantry items like salt, pepper, oil or water.
           examples:
             - Combine the **curry powder** and **turmeric** in a small bowl
+            - Mix the **lemongrass** and **lime leaf** paste, **gluten free soy sauce**, **honey**, and **dried chilli flakes** together to make the marinade
+            - Chop the **onion** and **tomatoes** and combine with a pinch of salt to make the base for the sauce
+            - Wash and chop the **cilantro** and **mint** to make the herb garnish
     CookStepData:
       type: object
       description: Ordered, heat/time-sensitive cooking step that cannot be done ahead of time.

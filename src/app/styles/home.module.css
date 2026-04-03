@@ -1,17 +1,58 @@
 .page {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
+}
+
+.loggedOutShell {
+  min-height: calc(100vh - 32px);
+  display: grid;
+  place-items: center;
+  padding: var(--space-5) 0;
+}
+
+.loggedOutHero {
+  display: grid;
+  gap: var(--space-3);
+  width: min(560px, 100%);
+  justify-items: center;
+  text-align: center;
+}
+
+.loggedOutWordmark {
+  font-size: clamp(2.2rem, 7.2vw, 3.5rem);
+}
+
+.loggedOutLead {
+  max-width: 48ch;
+}
+
+.authCta {
+  display: inline-flex;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--text-primary);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.authCta:hover {
+  text-decoration: none;
+  background: #251e16;
 }
 
 .searchCard {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
 }
 
 .searchRow {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .searchInputWrap {
@@ -20,12 +61,13 @@
 }
 
 .searchInput {
+  min-height: 44px;
   padding-right: 34px;
 }
 
 .searchButton {
   flex: 0 0 auto;
-  min-height: 38px;
+  min-height: 44px;
   padding: 8px 12px;
   font-size: var(--font-size-sm);
 }
@@ -62,9 +104,33 @@
   gap: var(--space-3);
 }
 
+.collectionList {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.collectionSection {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.collectionHeader {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.collectionTitle {
+  margin: 0;
+  font-size: clamp(1.08rem, 2vw, 1.3rem);
+}
+
+.collectionTitle a {
+  color: var(--text-primary);
+}
+
 .recipeCard {
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-4);
   align-content: start;
   height: 100%;
 }
@@ -104,7 +170,7 @@
 
 .recipeTitle {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.08rem;
   line-height: 1.2;
   min-height: 2.4em;
   display: -webkit-box;

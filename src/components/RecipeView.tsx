@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Recipe } from "@/lib/types";
 import { scaleValue } from "@/lib/scaling";
@@ -25,9 +26,11 @@ const CREATED_DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
 interface RecipeViewProps {
   recipe: Recipe;
   latestImportWarnings: string[];
+  collection: { id: string; name: string } | null;
+  canEdit: boolean;
 }
 
-export function RecipeView({ recipe, latestImportWarnings }: RecipeViewProps) {
+export function RecipeView({ recipe, latestImportWarnings, collection, canEdit }: RecipeViewProps) {
   const [servings, setServings] = useState<number>(recipe.servingCount ?? 2);
   const [checkedIngredientKeys, setCheckedIngredientKeys] = useState<string[]>([]);
   const ingredientCheckKeys = useMemo(
@@ -161,6 +164,11 @@ export function RecipeView({ recipe, latestImportWarnings }: RecipeViewProps) {
 
   return (
     <section className={styles.section}>
+      {collection ? (
+        <p className={`muted ${styles.collectionLabel}`}>
+          Collection: <Link href={`/collections/${collection.id}`}>{collection.name}</Link>
+        </p>
+      ) : null}
       <RecipeHeaderCard
         recipe={recipe}
         sourceLabel={sourceLabel}
@@ -190,6 +198,7 @@ export function RecipeView({ recipe, latestImportWarnings }: RecipeViewProps) {
           importPrompt: recipe.importPrompt
         }}
         latestImportWarnings={latestImportWarnings}
+        canEdit={canEdit}
       />
     </section>
   );

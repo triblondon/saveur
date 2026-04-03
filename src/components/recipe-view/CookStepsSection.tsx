@@ -316,6 +316,7 @@ export function CookStepsSection({ cookSteps }: CookStepsSectionProps) {
                     <StepTimer
                       instruction={step.instruction}
                       timerInfo={timerInfo}
+                      className={styles.stepTimer}
                       isHovered={isHovered}
                       onMouseEnter={() => setHoveredTimerStepId(stepKey)}
                       onMouseLeave={() =>
@@ -374,4 +375,3 @@ export function CookStepsSection({ cookSteps }: CookStepsSectionProps) {
     </>
   );
 }
-

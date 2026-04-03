@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
+import { getCurrentUser, touchSession } from "@/lib/auth/current-user";
 import { reimportRecipeFromUrl } from "@/lib/import";
-import { getRecipeById } from "@/lib/store";
+import { getRecipeByIdForUser } from "@/lib/store";
 import { parseReimportRecipeRequest } from "@/lib/validation";
-import { routeErrorResponse } from "@/lib/api/route-helpers";
+import {
+  forbiddenResponse,
+  routeErrorResponse,
+  unauthorizedResponse
+} from "@/lib/api/route-helpers";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const params = await context.params;
-  const recipe = await getRecipeById(params.id);
+  const recipe = await getRecipeByIdForUser(params.id, user.id);
   if (!recipe) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -24,15 +34,19 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       Object.prototype.hasOwnProperty.call(rawPayload, "prompt");
 
     const result = await reimportRecipeFromUrl({
+      userId: user.id,
       recipeId: recipe.id,
       url: recipe.sourceRef,
       prompt: hasPromptField ? payload.prompt ?? null : recipe.importPrompt ?? null
     });
 
-    return NextResponse.json(result, {
+    return touchSession(NextResponse.json(result, {
       status: result.status === "FAILED" ? 422 : 200
-    });
+    }), user);
   } catch (error) {
+    if (error instanceof Error && error.message.includes("No write access")) {
+      return forbiddenResponse();
+    }
     return routeErrorResponse(error, "Reimport failed");
   }
 }

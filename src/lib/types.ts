@@ -22,10 +22,21 @@ export type RecipeMetaData = components["schemas"]["RecipeMetaData"];
 export type BaseRecipe = components["schemas"]["BaseRecipe"];
 export type RecipeFromLlmImport = components["schemas"]["RecipeFromLlmImport"];
 
-export type Recipe = components["schemas"]["Recipe"];
+export type Recipe = components["schemas"]["Recipe"] & {
+  collectionId: string | null;
+  createdByUserId: string | null;
+};
 export type RecipeSummary = Pick<
   Recipe,
-  "id" | "title" | "heroPhotoUrl" | "timeRequiredMinutes" | "servingCount" | "sourceType" | "tags" | "updatedAt"
+  | "id"
+  | "title"
+  | "heroPhotoUrl"
+  | "timeRequiredMinutes"
+  | "servingCount"
+  | "sourceType"
+  | "tags"
+  | "updatedAt"
+  | "collectionId"
 >;
 
 export type ImportUrlRequest = components["schemas"]["ImportUrlRequest"];
@@ -46,7 +57,7 @@ export interface SourceSnapshot {
 
 export interface ImportRun {
   id: string;
-  ownerId: string | null;
+  createdByUserId: string | null;
   sourceType: SourceType;
   sourceUrl: string;
   adapterName: string;
@@ -60,7 +71,84 @@ export interface ImportRun {
   createdAt: string;
 }
 
+export interface UserSummary {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface UserRecord extends UserSummary {
+  passwordHash: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CollectionVisibility = "public" | "private";
+export type CollectionRole = "OWNER" | "COLLABORATOR" | "VIEWER";
+
+export interface CollectionMemberSummary extends UserSummary {
+  role: Exclude<CollectionRole, "OWNER">;
+}
+
+export interface CollectionSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  visibility: CollectionVisibility;
+  ownerUserId: string;
+  role: CollectionRole;
+  recipeCount: number;
+  updatedAt: string;
+  collaborators: UserSummary[];
+  viewers: UserSummary[];
+}
+
+export interface CollectionDetail extends CollectionSummary {
+  recipes: RecipeSummary[];
+}
+
+export interface CollectionCreateInput {
+  name: string;
+  description: string | null;
+  visibility: CollectionVisibility;
+}
+
+export interface CollectionUpdateInput extends CollectionCreateInput {}
+
+export interface CollectionDeleteOptions {
+  mode: "DELETE_RECIPES" | "REASSIGN";
+  targetCollectionId?: string;
+}
+
+export interface CollectionAccess {
+  collection: {
+    id: string;
+    ownerUserId: string;
+    visibility: CollectionVisibility;
+  };
+  role: CollectionRole | null;
+  canRead: boolean;
+  canWriteRecipes: boolean;
+  canManageCollection: boolean;
+}
+
 export interface StoreData {
+  users: UserRecord[];
+  collections: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    visibility: CollectionVisibility;
+    ownerUserId: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  collectionMembers: Array<{
+    collectionId: string;
+    userId: string;
+    role: Exclude<CollectionRole, "OWNER">;
+    createdAt: string;
+  }>;
   recipes: Recipe[];
   sourceSnapshots: SourceSnapshot[];
   importRuns: ImportRun[];

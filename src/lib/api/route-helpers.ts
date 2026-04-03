@@ -29,3 +29,14 @@ export function routeErrorResponse(error: unknown, fallbackMessage: string): Nex
   return validationErrorResponse(error) ?? internalErrorResponse(error, fallbackMessage);
 }
 
+export function unauthorizedResponse(message = "Authentication required"): NextResponse {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+export function forbiddenResponse(message = "Forbidden"): NextResponse {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
+export function badRequestResponse(message: string): NextResponse {
+  return NextResponse.json({ error: message }, { status: 400 });
+}

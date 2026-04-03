@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
+import { getCurrentUser, touchSession } from "@/lib/auth/current-user";
 import { uploadObject } from "@/lib/object-storage";
+import { unauthorizedResponse } from "@/lib/api/route-helpers";
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024;
 
@@ -27,6 +29,11 @@ function extensionForType(contentType: string): string {
 }
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const formData = await request.formData();
   const entry = formData.get("file") ?? formData.get("photo");
 
@@ -68,7 +75,7 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({
+  return touchSession(NextResponse.json({
     url: stored.publicUrl
-  });
+  }), user);
 }

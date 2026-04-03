@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Result as QrResult } from "@zxing/library";
 import { BarcodeStringFormat } from "react-qr-barcode-scanner";
+import type { CollectionSummary } from "@/lib/types";
 import styles from "@/components/styles/import-url-form.module.css";
 
 const BarcodeScanner = dynamic(() => import("react-qr-barcode-scanner"), { ssr: false });
@@ -19,10 +20,16 @@ interface ImportResponse {
   adapter: string;
 }
 
-export function ImportUrlForm() {
+interface ImportUrlFormProps {
+  collections: CollectionSummary[];
+  initialCollectionId: string;
+}
+
+export function ImportUrlForm({ collections, initialCollectionId }: ImportUrlFormProps) {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [collectionId, setCollectionId] = useState(initialCollectionId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResponse | null>(null);
@@ -115,6 +122,10 @@ export function ImportUrlForm() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!collectionId) {
+      setError("Select a destination collection");
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
@@ -127,7 +138,8 @@ export function ImportUrlForm() {
         },
         body: JSON.stringify({
           url,
-          prompt: prompt.trim() || null
+          prompt: prompt.trim() || null,
+          collectionId
         })
       });
 
@@ -215,6 +227,20 @@ export function ImportUrlForm() {
         placeholder="e.g. Prefer shorter cook steps and include explicit prep for sauces."
         onChange={(event) => setPrompt(event.target.value)}
       />
+      <label className={styles.fieldLabel} htmlFor="collectionId">
+        Destination collection
+      </label>
+      <select
+        id="collectionId"
+        value={collectionId}
+        onChange={(event) => setCollectionId(event.target.value)}
+      >
+        {collections.map((collection) => (
+          <option key={collection.id} value={collection.id}>
+            {collection.name}
+          </option>
+        ))}
+      </select>
       <button type="submit" disabled={loading}>
         {loading ? "Importing..." : "Import recipe"}
       </button>

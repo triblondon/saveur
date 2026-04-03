@@ -1,48 +1,80 @@
 import { NextResponse } from "next/server";
-import { deleteRecipe, getRecipeById, updateRecipe } from "@/lib/store";
+import { getCurrentUser, touchSession } from "@/lib/auth/current-user";
+import { deleteRecipeForUser, getRecipeByIdForUser, updateRecipeForUser } from "@/lib/store";
 import { normalizeRecipeUpdateInput } from "@/lib/recipe-domain";
-import { parseRecipeUpdateInput } from "@/lib/validation";
-import { routeErrorResponse } from "@/lib/api/route-helpers";
+import { parseRecipeMutationRequest } from "@/lib/validation";
+import {
+  forbiddenResponse,
+  routeErrorResponse,
+  unauthorizedResponse
+} from "@/lib/api/route-helpers";
 
 export async function GET(_: Request, context: { params: Promise<{ id: string }> }) {
   const params = await context.params;
-  const recipe = await getRecipeById(params.id);
+  const user = await getCurrentUser();
+  const recipe = await getRecipeByIdForUser(params.id, user?.id ?? null);
 
   if (!recipe) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ recipe });
+  if (!user) {
+    return NextResponse.json({ recipe });
+  }
+  return touchSession(NextResponse.json({ recipe }), user);
 }
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return unauthorizedResponse();
+  }
+
   const params = await context.params;
-  const existingRecipe = await getRecipeById(params.id);
+  const existingRecipe = await getRecipeByIdForUser(params.id, user.id);
   if (!existingRecipe) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   try {
-    const payload = parseRecipeUpdateInput(await request.json());
-    const recipeAfter = await updateRecipe(params.id, normalizeRecipeUpdateInput(payload));
+    const payload = parseRecipeMutationRequest(await request.json());
+    const recipeAfter = await updateRecipeForUser(user.id, params.id, {
+      ...normalizeRecipeUpdateInput(payload.recipe),
+      collectionId: payload.collectionId
+    });
 
     if (!recipeAfter) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ recipe: recipeAfter });
+    return touchSession(NextResponse.json({ recipe: recipeAfter }), user);
   } catch (error) {
+    if (error instanceof Error && error.message.includes("No write access")) {
+      return forbiddenResponse();
+    }
     return routeErrorResponse(error, "Unable to update recipe");
   }
 }
 
 export async function DELETE(_: Request, context: { params: Promise<{ id: string }> }) {
-  const params = await context.params;
-  const deleted = await deleteRecipe(params.id);
-
-  if (!deleted) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const user = await getCurrentUser();
+  if (!user) {
+    return unauthorizedResponse();
   }
 
-  return NextResponse.json({ deleted: true });
+  const params = await context.params;
+  try {
+    const deleted = await deleteRecipeForUser(user.id, params.id);
+
+    if (!deleted) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return touchSession(NextResponse.json({ deleted: true }), user);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("No write access")) {
+      return forbiddenResponse();
+    }
+    return routeErrorResponse(error, "Unable to delete recipe");
+  }
 }
